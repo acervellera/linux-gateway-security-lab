@@ -3,7 +3,7 @@
 ## Stato
 
 ```text
-IN CORSO
+IN CORSO — raccolta principale completata, restano due verifiche Realtek
 ```
 
 ## Obiettivo
@@ -14,89 +14,131 @@ Identificare senza ambiguità le interfacce MediaTek e Realtek, verificare drive
 
 I nomi come `wlan0`, `wlp...` e `wlx...` non possono essere indovinati. Usare l'interfaccia sbagliata potrebbe interrompere Internet o modificare una rete non destinata al laboratorio.
 
-## Attività previste
+## Ambiente verificato
 
-- [ ] identificare versione Ubuntu e kernel;
-- [ ] elencare interfacce e indirizzi;
-- [ ] identificare la route predefinita;
-- [ ] verificare profili NetworkManager;
-- [ ] identificare hardware USB e PCI;
-- [ ] associare ogni interfaccia al relativo hardware;
-- [ ] verificare driver;
-- [ ] verificare modalità AP;
-- [ ] controllare `rfkill`;
-- [ ] verificare eventuali conflitti con Docker e libvirt;
-- [ ] anonimizzare e registrare gli output.
+Raccolta eseguita il 14 luglio 2026 con soli comandi di osservazione.
 
-## Comandi di sola lettura
-
-```bash
-# Sistema operativo e kernel.
-cat /etc/os-release
-uname -a
-
-# Stato delle interfacce e indirizzi IPv4.
-ip -br link
-ip -4 -br address
-
-# Rotte e interfaccia usata per uscire verso Internet.
-ip route
-ip route get 1.1.1.1
-
-# Stato dei dispositivi e dei profili NetworkManager.
-nmcli device status
-nmcli connection show
-
-# Hardware USB e PCI.
-lsusb
-lspci -nnk | grep -A 4 -Ei 'network|wireless'
-
-# Interfacce wireless e blocchi radio.
-iw dev
-rfkill list
+```text
+Sistema operativo: Ubuntu 26.04 LTS (Resolute Raccoon)
+Kernel: 7.0.0-27-generic
+Architettura: x86_64
 ```
 
-## Verifica specifica della Realtek
+## Risultati verificati
 
-Dopo aver identificato la radio e l'interfaccia:
+### Uplink verso Internet
 
-```bash
-sudo ethtool -i <AP_IF>
-iw dev <AP_IF> info
-iw phy <PHY_REALTEK> info
+```text
+Ruolo: UPLINK
+Interfaccia locale: wlp13s0
+Hardware: MediaTek MT7922 802.11ax
+Driver: mt7921e
+Configurazione IPv4 osservata: 192.168.10.x/24
+Gateway predefinito: 192.168.10.1
+Stato NetworkManager: collegato
+Radio: phy1
+Blocco rfkill: no
 ```
 
-Nel risultato di `iw phy` deve comparire la modalità:
+Il comando `ip route get 1.1.1.1` ha confermato che il traffico Internet usa l'interfaccia MediaTek.
+
+### Scheda destinata all'hotspot
+
+Il nome reale dell'interfaccia incorpora l'indirizzo MAC e non viene pubblicato integralmente nel repository.
+
+```text
+Ruolo previsto: AP / hotspot
+Interfaccia pubblica: wlx<REDACTED>
+Hardware USB: Realtek RTL8812AU
+Identificativo USB: 0bda:8812
+Stato NetworkManager: disconnesso
+Modalità attuale: managed
+Radio: phy8
+Potenza riportata: 20 dBm
+Blocco rfkill: no
+Indirizzo IPv4: non assegnato
+```
+
+La scheda Realtek è quindi disponibile e non sta trasportando la connessione Internet dell'host.
+
+### Ethernet
+
+```text
+Interfaccia: enp12s0
+Stato: DOWN / NO-CARRIER
+Indirizzo IPv4: non assegnato
+```
+
+L'interfaccia Ethernet è disponibile come alternativa futura, ma al momento non ha collegamento fisico.
+
+### Reti virtuali già presenti
+
+Sono state osservate reti create da libvirt e Docker:
+
+```text
+virbr0   192.168.122.1/24   rete libvirt default
+virbr1   10.10.10.1/24      rete isolata di laboratorio
+docker0  172.17.0.1/16      bridge Docker predefinito
+br-*     172.18.0.1/16      bridge Docker personalizzato
+vnet1 e vnet2               interfacce di VM attive
+```
+
+Queste reti devono essere considerate nella fase 2 per evitare sovrapposizioni con la subnet dell'hotspot.
+
+## Checklist
+
+- [x] identificare versione Ubuntu e kernel;
+- [x] elencare interfacce e indirizzi;
+- [x] identificare la route predefinita;
+- [x] verificare profili NetworkManager;
+- [x] identificare hardware USB e PCI;
+- [x] associare MediaTek e Realtek alle rispettive interfacce;
+- [x] verificare il driver MediaTek;
+- [ ] verificare nuovamente il driver Realtek sul kernel corrente;
+- [ ] verificare nuovamente la modalità `AP` esposta da `phy8`;
+- [x] controllare `rfkill`;
+- [x] inventariare le reti Docker e libvirt;
+- [x] anonimizzare i risultati destinati al repository.
+
+## Ultimi comandi necessari
+
+Usare il nome reale della Realtek soltanto nel terminale locale:
+
+```bash
+# Mostra il driver caricato per la scheda Realtek.
+sudo ethtool -i wlx00c0cab4ed2d
+
+# Mostra la sezione con le modalità supportate dalla radio Realtek.
+iw phy phy8 info | grep -A 15 "Supported interface modes"
+```
+
+Nel secondo output deve comparire:
 
 ```text
 * AP
 ```
 
-Questo dimostra il supporto dichiarato, non ancora la stabilità dell'hotspot.
+Il supporto dichiarato della modalità `AP` non dimostra ancora la stabilità dell'hotspot; quella verrà verificata nella fase 3.
 
-## Valori da ottenere
+## Valori acquisiti
 
 ```text
-OS_VERSION=
-KERNEL_VERSION=
-UPLINK_IF=
-UPLINK_DRIVER=
-AP_IF=
-AP_DRIVER=
-AP_PHY=
-DEFAULT_GATEWAY=
+OS_VERSION=Ubuntu 26.04 LTS
+KERNEL_VERSION=7.0.0-27-generic
+UPLINK_IF=wlp13s0
+UPLINK_DRIVER=mt7921e
+AP_IF=wlx<REDACTED>
+AP_DRIVER=DA_RIVERIFICARE
+AP_PHY=phy8
+DEFAULT_GATEWAY=192.168.10.1
 ```
 
 ## Test di completamento
 
-La fase è completata quando possiamo rispondere con certezza:
+La fase sarà chiusa quando saranno confermati anche:
 
-1. quale scheda porta Internet;
-2. quale scheda verrà usata come hotspot;
-3. quale driver usa ciascuna scheda;
-4. quale radio supporta `AP`;
-5. quali reti virtuali sono già presenti;
-6. quali nomi reali useremo nei documenti successivi.
+1. il driver Realtek effettivamente caricato sul kernel corrente;
+2. la presenza della modalità `AP` tra le capacità di `phy8`.
 
 ## Modifiche vietate in questa fase
 
@@ -108,4 +150,4 @@ Non previsto: i comandi della fase sono di osservazione. Se viene eseguito accid
 
 ## Prossimo passo
 
-Definire topologia e piano di indirizzamento nella fase 2.
+Dopo i due controlli mancanti, chiudere la fase 1 e definire topologia e piano di indirizzamento nella fase 2.
