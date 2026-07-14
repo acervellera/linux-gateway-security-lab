@@ -3,7 +3,7 @@
 ## Stato
 
 ```text
-IN CORSO — raccolta principale completata, restano due verifiche Realtek
+COMPLETATA E VERIFICATA
 ```
 
 ## Obiettivo
@@ -51,15 +51,23 @@ Ruolo previsto: AP / hotspot
 Interfaccia pubblica: wlx<REDACTED>
 Hardware USB: Realtek RTL8812AU
 Identificativo USB: 0bda:8812
+Driver: rtw88_8812au
+Versione driver riportata: 7.0.0-27-generic
+Bus USB: 2-5.1:1.0
 Stato NetworkManager: disconnesso
 Modalità attuale: managed
+Modalità AP dichiarata: sì
 Radio: phy8
 Potenza riportata: 20 dBm
 Blocco rfkill: no
 Indirizzo IPv4: non assegnato
 ```
 
-La scheda Realtek è quindi disponibile e non sta trasportando la connessione Internet dell'host.
+La scheda Realtek è quindi disponibile, non trasporta la connessione Internet dell'host e dichiara supporto alla modalità Access Point.
+
+Il valore `firmware-version: N/A` mostrato da `ethtool` non prova che il dispositivo funzioni senza firmware. Significa soltanto che il driver non espone una versione firmware tramite questa interrogazione.
+
+Il supporto dichiarato della modalità `AP` non dimostra ancora stabilità, prestazioni o compatibilità con tutti i canali. Questi aspetti verranno verificati durante la creazione e il collaudo dell'hotspot.
 
 ### Ethernet
 
@@ -85,6 +93,51 @@ vnet1 e vnet2               interfacce di VM attive
 
 Queste reti devono essere considerate nella fase 2 per evitare sovrapposizioni con la subnet dell'hotspot.
 
+## Spiegazione degli ultimi comandi
+
+### Driver Realtek
+
+```bash
+sudo ethtool -i <AP_IF>
+```
+
+- `sudo` esegue il comando con privilegi amministrativi;
+- `ethtool` interroga proprietà e capacità delle interfacce di rete;
+- `-i` significa informazioni sul driver;
+- `<AP_IF>` rappresenta il nome locale completo della Realtek.
+
+Campi principali osservati:
+
+- `driver`: modulo kernel che controlla la scheda;
+- `version`: versione riportata dal driver;
+- `firmware-version`: versione firmware esposta dal driver, quando disponibile;
+- `bus-info`: percorso del dispositivo sul bus USB;
+- `supports-statistics`: indica se il driver espone statistiche tramite `ethtool`.
+
+Un primo errore di autenticazione `sudo` non modifica il sistema. Il comando viene eseguito soltanto dopo l'inserimento corretto della password.
+
+### Modalità supportate dalla radio
+
+```bash
+iw phy phy8 info | grep -A 15 "Supported interface modes"
+```
+
+- `iw` interroga il sottosistema wireless Linux;
+- `phy phy8` seleziona la radio fisica Realtek;
+- `info` richiede tutte le informazioni disponibili;
+- `|` è una pipe e passa l'output del comando a sinistra al comando a destra;
+- `grep` cerca una porzione di testo;
+- `-A 15` mostra la riga trovata e le quindici righe successive;
+- `"Supported interface modes"` è la stringa cercata.
+
+Modalità osservate:
+
+- `managed`: client Wi-Fi normale;
+- `AP`: Access Point;
+- `AP/VLAN`: Access Point con interfacce VLAN supportate dal driver;
+- `monitor`: osservazione passiva dei frame Wi-Fi;
+- `IBSS`: rete ad hoc tra dispositivi.
+
 ## Checklist
 
 - [x] identificare versione Ubuntu e kernel;
@@ -94,31 +147,11 @@ Queste reti devono essere considerate nella fase 2 per evitare sovrapposizioni c
 - [x] identificare hardware USB e PCI;
 - [x] associare MediaTek e Realtek alle rispettive interfacce;
 - [x] verificare il driver MediaTek;
-- [ ] verificare nuovamente il driver Realtek sul kernel corrente;
-- [ ] verificare nuovamente la modalità `AP` esposta da `phy8`;
+- [x] verificare il driver Realtek sul kernel corrente;
+- [x] verificare la modalità `AP` esposta da `phy8`;
 - [x] controllare `rfkill`;
 - [x] inventariare le reti Docker e libvirt;
 - [x] anonimizzare i risultati destinati al repository.
-
-## Ultimi comandi necessari
-
-Usare il nome reale della Realtek soltanto nel terminale locale:
-
-```bash
-# Mostra il driver caricato per la scheda Realtek.
-sudo ethtool -i wlx00c0cab4ed2d
-
-# Mostra la sezione con le modalità supportate dalla radio Realtek.
-iw phy phy8 info | grep -A 15 "Supported interface modes"
-```
-
-Nel secondo output deve comparire:
-
-```text
-* AP
-```
-
-Il supporto dichiarato della modalità `AP` non dimostra ancora la stabilità dell'hotspot; quella verrà verificata nella fase 3.
 
 ## Valori acquisiti
 
@@ -128,26 +161,33 @@ KERNEL_VERSION=7.0.0-27-generic
 UPLINK_IF=wlp13s0
 UPLINK_DRIVER=mt7921e
 AP_IF=wlx<REDACTED>
-AP_DRIVER=DA_RIVERIFICARE
+AP_DRIVER=rtw88_8812au
 AP_PHY=phy8
 DEFAULT_GATEWAY=192.168.10.1
 ```
 
 ## Test di completamento
 
-La fase sarà chiusa quando saranno confermati anche:
+La fase è completata perché sono stati verificati:
 
-1. il driver Realtek effettivamente caricato sul kernel corrente;
-2. la presenza della modalità `AP` tra le capacità di `phy8`.
+1. sistema operativo e kernel;
+2. interfaccia che porta Internet;
+3. hardware e driver MediaTek;
+4. interfaccia destinata all'hotspot;
+5. hardware e driver Realtek;
+6. supporto dichiarato della modalità `AP`;
+7. assenza di blocchi `rfkill`;
+8. reti Docker e libvirt già presenti;
+9. separazione tra uplink e futura interfaccia hotspot.
 
-## Modifiche vietate in questa fase
+## Modifiche effettuate
 
-Non creare ancora hotspot, non abilitare forwarding, non modificare `nftables` e non disattivare connessioni esistenti.
+Nessuna configurazione di rete è stata modificata. Tutti i comandi della fase erano di sola osservazione.
 
 ## Rollback
 
-Non previsto: i comandi della fase sono di osservazione. Se viene eseguito accidentalmente un comando modificativo, documentarlo immediatamente prima di proseguire.
+Non necessario. Il primo tentativo di autenticazione `sudo` non ha eseguito il comando e non ha prodotto modifiche.
 
 ## Prossimo passo
 
-Dopo i due controlli mancanti, chiudere la fase 1 e definire topologia e piano di indirizzamento nella fase 2.
+Definire nella fase 2 la topologia definitiva, la subnet dell'hotspot, l'indirizzo del gateway, l'intervallo DHCP e i criteri per evitare sovrapposizioni con le reti già presenti.
