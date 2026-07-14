@@ -34,7 +34,7 @@ Internet
 
 | Fase | Documento | Risultato richiesto | Stato iniziale |
 |---:|---|---|---|
-| 1 | [`steps/01-inventario-hardware-rete.md`](steps/01-inventario-hardware-rete.md) | Identificare hardware, driver, interfacce e uplink | IN CORSO |
+| 1 | [`steps/01-inventario-hardware-rete.md`](steps/01-inventario-hardware-rete.md) | Identificare hardware, driver, interfacce e uplink | COMPLETATO |
 | 2 | [`steps/02-topologia-e-indirizzamento.md`](steps/02-topologia-e-indirizzamento.md) | Definire nomi, subnet, gateway e percorso dei pacchetti | DA FARE |
 | 3 | [`steps/03-hotspot-realtek.md`](steps/03-hotspot-realtek.md) | Creare un hotspot stabile sulla Realtek USB | DA FARE |
 | 4 | [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md) | Fare navigare il client attraverso Ubuntu | DA FARE |
