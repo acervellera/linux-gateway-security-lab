@@ -1,124 +1,140 @@
-# Linux Gateway Security Lab
+# Ubuntu Security Gateway Lab
 
-Laboratorio didattico per imparare networking Linux, sicurezza di rete e Python costruendo progressivamente un gateway controllato.
+Laboratorio didattico per costruire un gateway di sicurezza su Ubuntu e imparare, passo dopo passo:
 
-> Il progetto deve essere usato esclusivamente su sistemi propri, reti di laboratorio e ambienti autorizzati.
+- networking Linux;
+- hotspot Wi-Fi;
+- DHCP, routing e NAT;
+- firewall con `nftables`;
+- cattura del traffico con `tcpdump`;
+- rilevamento con Suricata;
+- analisi dei log con Zeek;
+- programmazione Python applicata alla sicurezza;
+- database e dashboard con Docker.
 
-## Stato reale del progetto
+> Usare il progetto esclusivamente su reti, sistemi e dispositivi propri o esplicitamente autorizzati.
 
-Al momento è stata configurata la base di rete della VM Kali:
+## Nome del progetto
+
+Il nome scelto per il progetto è **Ubuntu Security Gateway Lab**.
+
+Slug GitHub consigliato:
 
 ```text
-eth0  WAN  192.168.122.223/24  DHCP  gateway 192.168.122.1
-eth1  LAN  10.10.10.2/24       statico, nessun gateway
+ubuntu-security-gateway-lab
 ```
 
-Sono stati verificati:
+Il repository può conservare temporaneamente il vecchio slug `linux-gateway-security-lab` senza compromettere la struttura dei file.
 
-- collegamento di Kali alla rete libvirt `default`;
-- collegamento di Kali alla rete isolata `lab-lan`;
-- accesso Internet dalla WAN di Kali;
-- profilo NetworkManager `wan-dhcp` associato a `eth0`;
-- profilo NetworkManager `lab-lan-static` associato a `eth1`.
-
-Non sono ancora stati realizzati:
-
-- configurazione di Parrot;
-- forwarding IPv4;
-- firewall `nftables`;
-- NAT/masquerading;
-- monitoraggio del traffico;
-- script Python;
-- dashboard Docker;
-- hotspot fisico completo.
-
-## Documentazione
-
-La documentazione è divisa intenzionalmente in due file.
-
-### 1. Obiettivi e progetto
-
-[`docs/OBIETTIVI_E_PROGETTO.md`](docs/OBIETTIVI_E_PROGETTO.md)
-
-Descrive:
-
-- cosa si vuole costruire;
-- obiettivi didattici e tecnici;
-- architettura virtuale prevista;
-- evoluzione fisica futura;
-- ruolo di Python e Docker;
-- criteri di completamento;
-- limiti di sicurezza.
-
-Le funzioni descritte in questo file sono **obiettivi**, non attività già completate.
-
-### 2. Lavoro svolto e prossimi passi
-
-[`docs/LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](docs/LAVORO_SVOLTO_E_PROSSIMI_PASSI.md)
-
-Contiene:
-
-- inventario realmente eseguito;
-- comandi realmente usati;
-- spiegazione delle opzioni e delle flag;
-- teoria necessaria per comprendere i risultati;
-- errori incontrati e relative soluzioni;
-- output verificati;
-- stato attuale preciso;
-- elenco esplicito delle attività non ancora eseguite;
-- prossimi passi ordinati.
-
-## Architettura prevista
+## Risultato finale
 
 ```text
-Internet
-   |
-Ubuntu host
-   |
-rete libvirt default
-   |
-Kali
-|-- eth0: WAN
-`-- eth1: LAN 10.10.10.2/24
-        |
-        `-- lab-lan isolata
+Telefono / VM / dispositivo di test
                 |
-                `-- Parrot, ancora da configurare
+                v
+       Realtek USB usata come hotspot
+                |
+                v
+          Ubuntu gateway
+          |-- NetworkManager / hostapd: hotspot
+          |-- DHCP e DNS locale
+          |-- routing IPv4 e NAT
+          |-- nftables: firewall
+          |-- tcpdump: cattura pacchetti
+          |-- Suricata: rilevamento eventi
+          |-- Zeek: log di rete
+          |-- Python: analisi e report
+          `-- Docker: database e dashboard
+                |
+                v
+       MediaTek interna usata come uplink
+                |
+                v
+             Internet
 ```
 
 ## Metodo di lavoro
 
-Ogni fase deve essere verificata prima di passare alla successiva:
+Il progetto viene costruito una fase alla volta.
+
+Ogni fase deve contenere:
+
+1. obiettivo;
+2. teoria necessaria;
+3. prerequisiti;
+4. comandi commentati;
+5. spiegazione di ogni opzione;
+6. risultati realmente osservati;
+7. test di verifica;
+8. problemi incontrati;
+9. procedura di rollback;
+10. stato finale della fase.
+
+Un passaggio viene segnato come completato soltanto dopo una verifica reale.
+
+## Da dove iniziare
+
+1. Leggere la [roadmap completa](docs/00-ROADMAP.md).
+2. Controllare lo [stato attuale](docs/02-STATO-ATTUALE.md).
+3. Seguire i documenti nella cartella [`docs/steps`](docs/steps).
+4. Aggiornare il documento della fase dopo ogni attività realmente eseguita.
+
+## Struttura del repository
 
 ```text
-interfacce
-  -> indirizzi
-  -> rotte
-  -> collegamento client-gateway
-  -> forwarding
-  -> firewall
-  -> NAT
-  -> DNS
-  -> monitoraggio
-  -> Python
-  -> Docker
-  -> gateway fisico
+.
+|-- README.md
+|-- SECURITY.md
+|-- CONTRIBUTING.md
+|-- docs/
+|   |-- 00-ROADMAP.md
+|   |-- 01-METODO-DI-LAVORO.md
+|   |-- 02-STATO-ATTUALE.md
+|   |-- TEMPLATE-FASE.md
+|   `-- steps/
+|       |-- 01-inventario-hardware-rete.md
+|       |-- 02-topologia-e-indirizzamento.md
+|       |-- 03-hotspot-realtek.md
+|       |-- 04-dhcp-routing-nat.md
+|       |-- 05-firewall-nftables.md
+|       |-- 06-cattura-tcpdump.md
+|       |-- 07-suricata.md
+|       |-- 08-zeek.md
+|       |-- 09-python-log-analysis.md
+|       |-- 10-database-dashboard-docker.md
+|       `-- 11-test-hardening-backup.md
+|-- configs/      configurazioni verificate
+|-- scripts/      script Bash di supporto
+|-- python/       programmi Python commentati
+|-- docker/       compose, database e dashboard
+|-- samples/      esempi di log anonimizzati
+`-- reports/      report locali, normalmente ignorati da Git
 ```
 
-## Dati pubblici e privacy
+Le directory tecniche verranno riempite solo quando la relativa fase sarà stata eseguita e verificata.
 
-Nel repository pubblico non devono essere pubblicati:
+## Regola fondamentale
 
-- SSID domestici;
-- password;
-- token;
-- chiavi private;
-- indirizzi MAC reali non necessari;
+Nel repository distinguiamo sempre tre stati:
+
+- **DA FARE**: attività pianificata ma non iniziata;
+- **IN CORSO**: attività iniziata ma non completamente verificata;
+- **COMPLETATO**: attività eseguita, testata e documentata.
+
+Non inserire configurazioni presentandole come funzionanti prima di averle provate sul gateway.
+
+## Privacy
+
+Non pubblicare:
+
+- password Wi-Fi;
+- SSID domestici reali;
+- token o chiavi private;
 - file `.env` reali;
-- log non revisionati;
+- indirizzi MAC non necessari;
+- catture `.pcap` non revisionate;
+- log contenenti dati personali;
 - traffico appartenente a terzi.
-
-Gli indirizzi `10.10.10.0/24` e `192.168.122.0/24` sono reti private usate nel laboratorio.
 
 ## Licenza
 
