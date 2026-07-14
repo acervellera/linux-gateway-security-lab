@@ -13,7 +13,7 @@ Costruire un gateway fisico Ubuntu nel quale:
 - Python analizza i log;
 - Docker ospita database e dashboard senza gestire direttamente il routing principale.
 
-## Fase 1: risultati verificati
+## Fase 1 completata: risultati verificati
 
 La raccolta aggiornata è stata eseguita su:
 
@@ -42,14 +42,20 @@ Il nome della rete Wi-Fi domestica e gli indirizzi MAC non vengono registrati ne
 Interfaccia pubblica: wlx<REDACTED>
 Hardware: Realtek RTL8812AU
 USB ID: 0bda:8812
+Driver: rtw88_8812au
+Versione riportata: 7.0.0-27-generic
+Bus USB: 2-5.1:1.0
 Stato: disconnesso
 Modalità attuale: managed
+Supporto AP dichiarato: sì
 Radio: phy8
 IPv4: non assegnato
 rfkill: nessun blocco software o hardware
 ```
 
-La Realtek risulta libera e non viene usata come uscita Internet.
+La Realtek risulta libera, non viene usata come uscita Internet e dichiara supporto alla modalità Access Point.
+
+Il supporto `AP` è una capacità dichiarata dal driver. Stabilità, canale, banda, DHCP e navigazione dei client verranno verificati nelle fasi successive.
 
 ### Reti virtuali presenti
 
@@ -62,26 +68,12 @@ La Realtek risulta libera e non viene usata come uscita Internet.
 
 Sono inoltre presenti interfacce `vnet` associate a macchine virtuali attive. La subnet futura dell'hotspot dovrà evitare queste reti.
 
-## Verifiche ancora necessarie per chiudere la fase 1
-
-Restano due controlli di sola lettura sulla Realtek:
-
-```bash
-sudo ethtool -i wlx00c0cab4ed2d
-iw phy phy8 info | grep -A 15 "Supported interface modes"
-```
-
-Devono confermare:
-
-- il driver Realtek effettivamente caricato sul kernel corrente;
-- la presenza della modalità `AP`.
-
 ## Stato delle fasi
 
 | Fase | Stato | Nota |
 |---:|---|---|
-| 1. Inventario hardware e rete | IN CORSO | Raccolta principale completata; mancano driver Realtek e controllo `AP` aggiornato |
-| 2. Topologia e indirizzamento | DA FARE | Le reti esistenti sono note; manca la scelta definitiva della subnet hotspot |
+| 1. Inventario hardware e rete | COMPLETATA | Uplink MediaTek e Realtek AP identificati; driver, route, rfkill e modalità `AP` verificati |
+| 2. Topologia e indirizzamento | PROSSIMA | Le reti esistenti sono note; va scelta la subnet definitiva dell'hotspot |
 | 3. Hotspot Realtek | DA FARE | Nessun hotspot stabile verificato |
 | 4. DHCP, routing e NAT | DA FARE | Nessun client fisico ha ancora navigato attraverso Ubuntu |
 | 5. Firewall nftables | DA FARE | Nessun ruleset fisico verificato |
@@ -91,6 +83,23 @@ Devono confermare:
 | 9. Python | DA FARE | Nessun analizzatore dei log ancora sviluppato |
 | 10. Docker dashboard | DA FARE | Nessuno stack definitivo |
 | 11. Test e hardening | DA FARE | Dipende dalle fasi precedenti |
+
+## Metodo didattico confermato
+
+Per ogni fase verranno documentati:
+
+1. scopo della fase;
+2. teoria necessaria;
+3. significato di ogni comando;
+4. significato di opzioni e flag;
+5. librerie e moduli usati negli script Python;
+6. output atteso e interpretazione;
+7. rischi e modifiche prodotte;
+8. test di verifica;
+9. rollback;
+10. risultati realmente osservati.
+
+Le configurazioni future non verranno indicate come completate finché non saranno state eseguite e verificate sull'ambiente di laboratorio.
 
 ## Vincoli di pubblicazione
 
@@ -106,4 +115,14 @@ Non pubblicare nel repository:
 
 ## Prossima azione
 
-Eseguire i due controlli Realtek indicati sopra. Dopo la conferma, la fase 1 potrà essere marcata `COMPLETATA` e inizierà la fase 2: scelta della topologia e della subnet per l'hotspot.
+Iniziare la fase 2 e definire:
+
+```text
+UPLINK_IF=wlp13s0
+AP_IF=wlx<valore-locale>
+HOTSPOT_SUBNET=<da scegliere>
+GATEWAY_IP=<da scegliere>
+DHCP_RANGE=<da scegliere>
+```
+
+La subnet dovrà essere diversa da `192.168.10.0/24`, `192.168.122.0/24`, `10.10.10.0/24`, `172.17.0.0/16` e `172.18.0.0/16`.
