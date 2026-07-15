@@ -32,10 +32,10 @@ Internet
 
 ## Sequenza delle fasi
 
-| Fase | Documento | Risultato richiesto | Stato iniziale |
+| Fase | Documento | Risultato richiesto | Stato attuale |
 |---:|---|---|---|
 | 1 | [`steps/01-inventario-hardware-rete.md`](steps/01-inventario-hardware-rete.md) | Identificare hardware, driver, interfacce e uplink | COMPLETATO |
-| 2 | [`steps/02-topologia-e-indirizzamento.md`](steps/02-topologia-e-indirizzamento.md) | Definire nomi, subnet, gateway e percorso dei pacchetti | DA FARE |
+| 2 | [`steps/02-topologia-e-indirizzamento.md`](steps/02-topologia-e-indirizzamento.md) | Definire nomi, subnet, gateway e percorso dei pacchetti | COMPLETATO |
 | 3 | [`steps/03-hotspot-realtek.md`](steps/03-hotspot-realtek.md) | Creare un hotspot stabile sulla Realtek USB | DA FARE |
 | 4 | [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md) | Fare navigare il client attraverso Ubuntu | DA FARE |
 | 5 | [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md) | Applicare regole stateful e un rollback sicuro | DA FARE |
@@ -48,48 +48,77 @@ Internet
 
 ## Fase 1 — Inventario
 
-Dobbiamo verificare:
+Sono stati verificati:
 
 - versione di Ubuntu e kernel;
 - nomi reali delle interfacce;
 - modello e driver della MediaTek interna;
 - modello e driver della Realtek USB;
-- supporto della modalità Access Point;
+- supporto dichiarato della modalità Access Point;
 - interfaccia realmente usata per Internet;
 - gestione delle schede da parte di NetworkManager;
-- eventuali blocchi `rfkill`;
-- servizi di rete già presenti.
+- assenza di blocchi `rfkill`;
+- servizi e reti virtuali già presenti.
 
-Nessuna configurazione viene modificata in questa fase.
+Nessuna configurazione è stata modificata in questa fase.
 
 ## Fase 2 — Topologia e piano IP
 
-Dobbiamo stabilire e documentare:
+La fase 2 è stata completata e verificata il 15 luglio 2026.
 
-- `UPLINK_IF`: interfaccia MediaTek verso Internet;
-- `AP_IF`: interfaccia Realtek dell'hotspot;
+Sono stati definiti:
+
+- `UPLINK_IF`: MediaTek `wlp13s0` verso Internet;
+- `AP_IF`: Realtek USB, anonimizzata come `wlx<REDACTED>` nel repository;
 - subnet del laboratorio;
 - indirizzo del gateway Ubuntu;
-- intervallo DHCP;
+- intervallo e durata DHCP;
 - DNS distribuito ai client;
-- nomi dei profili NetworkManager;
+- nome del profilo NetworkManager;
+- SSID non personale;
+- banda e canale iniziali;
+- comportamento IPv6 iniziale;
+- politica di isolamento dei client;
 - percorso previsto dei pacchetti;
-- conflitti con Docker, libvirt o reti domestiche.
+- convivenza con Docker, libvirt e rete domestica.
 
-Esempio iniziale, da confermare:
+Piano verificato:
 
 ```text
 LAB_SUBNET=10.42.0.0/24
 GATEWAY_IP=10.42.0.1
 DHCP_RANGE=10.42.0.50-10.42.0.200
+DHCP_LEASE_SECONDS=3600
+DNS_SERVER=10.42.0.1
+HOTSPOT_PROFILE=security-gateway-ap
+LAB_SSID=SecurityGatewayLab
+WIFI_BAND=2.4GHz
+WIFI_CHANNEL=6
+IPV6_MODE=disabled-on-hotspot-initially
+CLIENT_ISOLATION=enable-if-supported
 ```
+
+La subnet `10.42.0.0/24` non si sovrappone alle reti osservate:
+
+```text
+192.168.10.0/24
+192.168.122.0/24
+10.10.10.0/24
+172.17.0.0/16
+172.18.0.0/16
+```
+
+Il dominio regolamentare osservato era `GB` e dovrà essere corretto a `IT` prima dell'attivazione dell'hotspot.
+
+Nessuna configurazione di rete è stata modificata durante la fase 2.
 
 ## Fase 3 — Hotspot Realtek
 
 Obiettivi:
 
+- verificare e correggere il dominio regolamentare;
 - creare un profilo hotspot separato;
-- scegliere banda e canale compatibili;
+- scegliere e applicare banda e canale compatibili;
 - impostare WPA2/WPA3 secondo supporto reale;
 - collegare un solo dispositivo di test;
 - verificare associazione Wi-Fi e indirizzo IP;
