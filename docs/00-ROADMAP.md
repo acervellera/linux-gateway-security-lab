@@ -36,8 +36,8 @@ Internet
 |---:|---|---|---|
 | 1 | [`steps/01-inventario-hardware-rete.md`](steps/01-inventario-hardware-rete.md) | Identificare hardware, driver, interfacce e uplink | COMPLETATO |
 | 2 | [`steps/02-topologia-e-indirizzamento.md`](steps/02-topologia-e-indirizzamento.md) | Definire nomi, subnet, gateway e percorso dei pacchetti | COMPLETATO |
-| 3 | [`steps/03-hotspot-realtek.md`](steps/03-hotspot-realtek.md) | Creare un hotspot stabile sulla Realtek USB | DA FARE |
-| 4 | [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md) | Fare navigare il client attraverso Ubuntu | DA FARE |
+| 3 | [`steps/03-hotspot-realtek.md`](steps/03-hotspot-realtek.md) | Creare un hotspot stabile sulla Realtek USB | COMPLETATO |
+| 4 | [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md) | Verificare e documentare la navigazione del client attraverso Ubuntu | PROSSIMO |
 | 5 | [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md) | Applicare regole stateful e un rollback sicuro | DA FARE |
 | 6 | [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md) | Osservare DNS, TCP, TLS e traffico inoltrato | DA FARE |
 | 7 | [`steps/07-suricata.md`](steps/07-suricata.md) | Produrre e verificare avvisi IDS | DA FARE |
@@ -108,34 +108,54 @@ La subnet `10.42.0.0/24` non si sovrappone alle reti osservate:
 172.18.0.0/16
 ```
 
-Il dominio regolamentare osservato era `GB` e dovrà essere corretto a `IT` prima dell'attivazione dell'hotspot.
+Il dominio regolamentare osservato durante la pianificazione era `GB`. La correzione è stata affrontata nella fase 3.
 
 Nessuna configurazione di rete è stata modificata durante la fase 2.
 
 ## Fase 3 — Hotspot Realtek
 
-Obiettivi:
+La fase 3 è stata completata e verificata il 15 luglio 2026.
 
-- verificare e correggere il dominio regolamentare;
-- creare un profilo hotspot separato;
-- scegliere e applicare banda e canale compatibili;
-- impostare WPA2/WPA3 secondo supporto reale;
-- collegare un solo dispositivo di test;
-- verificare associazione Wi-Fi e indirizzo IP;
-- documentare arresto e rimozione del profilo.
+Sono stati completati:
+
+- richiesta del dominio regolamentare italiano, con risultato effettivo `country 98: DFS-ETSI`;
+- creazione del profilo `security-gateway-ap` sulla sola Realtek USB;
+- configurazione di `SecurityGatewayLab` in modalità `AP`;
+- banda 2,4 GHz e canale 6;
+- sicurezza WPA-PSK con segreto non pubblicato;
+- indirizzo gateway `10.42.0.1/24`;
+- condivisione IPv4 tramite `ipv4.method shared`;
+- disabilitazione IPv6 sul solo profilo hotspot iniziale;
+- disabilitazione dell'avvio automatico con `connection.autoconnect=no`;
+- associazione contemporanea di client reali;
+- assegnazione di un indirizzo `10.42.0.x`;
+- raggiungibilità del gateway dal client tramite richiesta HTTP con risposta `200`;
+- mantenimento dell'uplink Internet sulla MediaTek `wlp13s0`;
+- salvataggio locale dello stato completo di NetworkManager con segreti nascosti;
+- arresto e riattivazione dell'hotspot;
+- eliminazione completa del profilo;
+- verifica della rimozione di `10.42.0.1/24` dalla Realtek;
+- ricreazione e riattivazione del profilo con gli stessi parametri.
+
+È stata anche osservata navigazione Internet dal telefono attraverso la connessione condivisa. La spiegazione dettagliata di DHCP, DNS, forwarding e NAT resta assegnata alla fase 4.
+
+Il test dopo riavvio è rinviato alla fase 11, insieme alla verifica della persistenza e dell'hardening finale.
 
 ## Fase 4 — DHCP, routing e NAT
 
+NetworkManager ha già dimostrato empiricamente che la modalità `shared` permette al client di navigare. In questa fase il comportamento verrà separato, osservato e documentato.
+
 Ordine di lavoro:
 
-1. verificare il DHCP;
-2. verificare client → gateway;
-3. abilitare temporaneamente IPv4 forwarding;
-4. verificare il percorso senza firewall restrittivo;
-5. applicare NAT/masquerading;
-6. testare IP esterno;
-7. testare DNS;
-8. rendere persistente solo ciò che ha funzionato.
+1. verificare indirizzo, gateway e DNS ricevuti dal client;
+2. identificare il servizio DHCP e DNS forwarding gestito da NetworkManager;
+3. controllare lo stato del forwarding IPv4;
+4. identificare le regole NAT/masquerading create automaticamente;
+5. verificare il percorso client → gateway;
+6. testare separatamente raggiungibilità di un IP esterno;
+7. testare la risoluzione DNS;
+8. documentare conntrack e traduzione NAT inversa;
+9. rendere persistente solo ciò che ha funzionato.
 
 ## Fase 5 — Firewall nftables
 
@@ -223,7 +243,8 @@ Verificheremo:
 
 - riavvio del gateway;
 - persistenza delle configurazioni;
-- assenza di accesso diretto del client a Internet;
+- comportamento con `connection.autoconnect=no` e successiva politica definitiva;
+- isolamento e accessi consentiti tra client e reti;
 - comportamento con uplink assente;
 - comportamento con IDS fermo;
 - spazio occupato dai log;
