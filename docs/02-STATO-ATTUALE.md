@@ -36,7 +36,7 @@ Stato: collegato e usato per Internet
 
 Il nome della rete Wi-Fi domestica, l'indirizzo IPv4 completo dell'host e gli indirizzi MAC non vengono registrati nel repository pubblico.
 
-### Interfaccia hotspot prevista
+### Interfaccia hotspot
 
 ```text
 Interfaccia pubblica: wlx<REDACTED>
@@ -45,14 +45,9 @@ USB ID: 0bda:8812
 Driver: rtw88_8812au
 Versione riportata: 7.0.0-27-generic
 Bus USB: 2-5.1:1.0
-Stato: disconnesso
-Modalità attuale: managed
 Supporto AP dichiarato: sì
-IPv4: non assegnato
 rfkill: nessun blocco software o hardware
 ```
-
-La Realtek risulta libera, non viene usata come uscita Internet e dichiara supporto alla modalità Access Point.
 
 L'identificatore `phy` assegnato dal kernel può cambiare dopo un riavvio o dopo aver scollegato e ricollegato il dispositivo USB. Per le configurazioni persistenti viene quindi usato il nome dell'interfaccia, conservando il valore completo soltanto nella documentazione privata locale.
 
@@ -90,24 +85,41 @@ IPV6_MODE=disabled-on-hotspot-initially
 CLIENT_ISOLATION=enable-if-supported
 ```
 
-La scansione Wi-Fi ha mostrato occupazione locale sui canali 1 e 10 della banda 2,4 GHz. Il canale 6 è stato scelto come punto di partenza per il collaudo; la qualità reale dovrà essere verificata con un client collegato.
+## Fase 3 completata: hotspot Realtek
 
-Il dominio regolamentare osservato era `GB`. Prima di attivare l'hotspot dovrà essere impostato e verificato `IT`, senza modificare inutilmente la connettività dell'uplink.
+La fase 3 è stata completata e verificata il 15 luglio 2026.
 
-### Percorso previsto
+### Configurazione applicata
 
 ```text
-client 10.42.0.x
-  -> Realtek USB / hotspot
-  -> firewall nella chain forward
-  -> routing IPv4
-  -> NAT/masquerading
-  -> wlp13s0
-  -> router 192.168.10.1
-  -> Internet
+HOTSPOT_PROFILE=security-gateway-ap
+LAB_SSID=SecurityGatewayLab
+WIFI_MODE=ap
+WIFI_BAND=2.4GHz
+WIFI_CHANNEL=6
+GATEWAY_IP=10.42.0.1/24
+IPV4_METHOD=shared
+IPV6_MODE=disabled
+AUTOCONNECT=no
 ```
 
-Il percorso è stato progettato ma non ancora collaudato end-to-end. Hotspot, DHCP operativo, forwarding, NAT e firewall appartengono alle fasi successive.
+Il dominio regolamentare è stato richiesto come `IT`; il kernel ha mostrato `country 98: DFS-ETSI`. Il canale 6 a 2,4 GHz è risultato disponibile con potenza indicata di 20 dBm.
+
+### Risultati verificati
+
+- Realtek passata da `managed` a `AP`;
+- SSID `SecurityGatewayLab` visibile;
+- client reali autenticati, autorizzati e associati;
+- almeno un client con indirizzo IPv4 `10.42.0.x` valido;
+- gateway Ubuntu `10.42.0.1` raggiunto dal client tramite richiesta HTTP con risposta `200`;
+- MediaTek `wlp13s0` rimasta collegata e usata come route predefinita;
+- navigazione Internet osservata dal telefono tramite la condivisione IPv4 di NetworkManager;
+- stato completo dei profili NetworkManager salvato localmente con segreti nascosti;
+- hotspot fermato e riattivato;
+- profilo eliminato e ricreato con successo;
+- indirizzo della Realtek rimosso correttamente durante il rollback e ripristinato dopo la ricreazione.
+
+Il comportamento dopo riavvio è intenzionalmente rinviato alla fase 11. Il profilo usa `connection.autoconnect=no`, quindi non è previsto che l'hotspot si attivi automaticamente al boot in questa fase.
 
 ## Stato delle fasi
 
@@ -115,32 +127,39 @@ Il percorso è stato progettato ma non ancora collaudato end-to-end. Hotspot, DH
 |---:|---|---|
 | 1. Inventario hardware e rete | COMPLETATA | Uplink MediaTek e Realtek AP identificati; driver, route, rfkill e modalità `AP` verificati |
 | 2. Topologia e indirizzamento | COMPLETATA | Subnet, gateway, DHCP, DNS, profilo, banda, canale e percorso dei pacchetti definiti senza conflitti locali |
-| 3. Hotspot Realtek | PROSSIMA | Correggere il dominio regolamentare, creare il profilo e collegare un client autorizzato |
-| 4. DHCP, routing e NAT | DA FARE | Nessun client fisico ha ancora navigato attraverso Ubuntu |
+| 3. Hotspot Realtek | COMPLETATA | Hotspot attivo, client associati, gateway raggiunto e rollback completo verificato |
+| 4. DHCP, routing e NAT | PROSSIMA | La condivisione IPv4 funziona empiricamente; DHCP, DNS, forwarding e NAT devono essere osservati e documentati nel dettaglio |
 | 5. Firewall nftables | DA FARE | Nessun ruleset fisico verificato |
 | 6. tcpdump | DA FARE | Nessuna cattura della nuova topologia documentata |
 | 7. Suricata | DA FARE | Non installato o configurato per questa topologia |
 | 8. Zeek | DA FARE | Non installato o configurato per questa topologia |
 | 9. Python | DA FARE | Nessun analizzatore dei log ancora sviluppato |
 | 10. Docker dashboard | DA FARE | Nessuno stack definitivo |
-| 11. Test e hardening | DA FARE | Dipende dalle fasi precedenti |
+| 11. Test e hardening | DA FARE | Include riavvio, persistenza, comportamento con uplink assente e ripristino finale |
 
 ## Modifiche di rete applicate finora
 
-Le fasi 1 e 2 hanno usato soltanto comandi di osservazione.
+Sono stati:
+
+- creati e verificati i parametri del profilo `security-gateway-ap`;
+- assegnato `10.42.0.1/24` alla Realtek durante l'attivazione;
+- usato `ipv4.method shared` per il DHCP, DNS forwarding e NAT gestiti da NetworkManager;
+- disabilitato IPv6 sul solo profilo hotspot iniziale;
+- disabilitata l'attivazione automatica del profilo;
+- verificati arresto, eliminazione e ricreazione del profilo;
+- richiesto temporaneamente il dominio regolamentare italiano, con risultato effettivo `country 98: DFS-ETSI`.
 
 Non sono ancora stati:
 
-- creati profili hotspot persistenti;
-- assegnati indirizzi alla Realtek;
-- attivati forwarding o NAT;
-- applicati ruleset `nftables`;
-- modificati DNS del sistema;
-- modificato il dominio regolamentare.
+- applicati ruleset definitivi `nftables`;
+- verificati isolamento tra client e protezione della rete domestica;
+- separati manualmente DHCP, DNS, forwarding e NAT dagli automatismi di NetworkManager;
+- installati o configurati Suricata e Zeek;
+- verificati persistenza e comportamento dopo riavvio.
 
 ## Metodo didattico confermato
 
-Per ogni fase verranno documentati:
+Per ogni fase vengono documentati:
 
 1. scopo della fase;
 2. teoria necessaria;
@@ -166,19 +185,20 @@ Non pubblicare nel repository:
 - indirizzo IPv4 completo dell'host quando non necessario;
 - catture PCAP non revisionate;
 - log grezzi contenenti dati di dispositivi reali;
-- file `.env` con valori locali.
+- file `.env` con valori locali;
+- backup locali completi dei profili NetworkManager.
 
 ## Prossima azione
 
-Iniziare la fase 3 e procedere in questo ordine:
+Iniziare la fase 4 e procedere in questo ordine:
 
 ```text
-1. verificare e correggere il dominio regolamentare a IT
-2. creare security-gateway-ap sulla Realtek USB
-3. impostare SecurityGatewayLab, banda 2.4 GHz, canale 6
-4. collegare un solo client autorizzato
-5. verificare associazione, indirizzo IP e disconnessione
-6. provare il rollback eliminando il profilo quando richiesto
+1. verificare configurazione IP, gateway e DNS ricevuti dal client
+2. osservare il servizio DHCP usato da NetworkManager
+3. controllare lo stato del forwarding IPv4
+4. identificare le regole NAT create dalla connessione shared
+5. verificare separatamente accesso per IP e risoluzione DNS
+6. documentare il percorso client -> Realtek -> Ubuntu -> MediaTek -> Internet
 ```
 
-La fase 3 non dovrà essere indicata come completata finché un client reale non sarà riuscito ad associarsi in modo stabile e il profilo non sarà stato verificato e documentato.
+La fase 4 dovrà distinguere chiaramente ciò che NetworkManager configura automaticamente da ciò che verrà successivamente controllato tramite `nftables`.
