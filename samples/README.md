@@ -2,8 +2,6 @@
 
 La cartella `samples/` contiene materiale destinato al repository pubblico.
 
-Non è una cartella riservata soltanto ai log e non deve contenere report privati.
-
 ## Contenuti ammessi
 
 Possono essere inseriti:
