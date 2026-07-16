@@ -55,7 +55,7 @@ La prima configurazione usa NetworkManager, perché consente di creare rapidamen
 - [x] fermare e riattivare l'hotspot;
 - [x] verificare esplicitamente la raggiungibilità del gateway dal client;
 - [x] verificare il rollback eliminando e ricreando il profilo;
-- [ ] verificare il comportamento dopo riavvio: rinviato alla fase 11, perché `connection.autoconnect` è intenzionalmente impostato su `no`.
+- [] verificare il comportamento dopo riavvio: rinviato alla fase 11, perché `connection.autoconnect` è intenzionalmente impostato su `no`.
 
 Il test dopo riavvio non è un requisito di completamento della fase 3: verrà eseguito insieme ai test di persistenza e hardening.
 
