@@ -113,11 +113,29 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale.
 |-- scripts/      script Bash di supporto
 |-- python/       programmi Python commentati
 |-- docker/       compose, database e dashboard
-|-- samples/      esempi di log anonimizzati
-`-- reports/      report locali ignorati da Git
+|-- samples/      esempi pubblici anonimizzati: report, output e log revisionati
+`-- reports/      report privati locali ignorati da Git
 ```
 
 Le directory tecniche vengono riempite soltanto quando la relativa fase è stata eseguita e verificata.
+
+### Differenza tra `samples/` e `reports/`
+
+`samples/` contiene materiale sicuro da pubblicare e utile come esempio riproducibile:
+
+- report pubblici anonimizzati delle fasi completate;
+- output brevi con dati sensibili rimossi;
+- in futuro, estratti di log revisionati e dati di esempio per gli script Python.
+
+`reports/` contiene invece materiale privato locale:
+
+- output completi;
+- screenshot originali;
+- nomi reali delle interfacce;
+- indirizzi MAC e altri dati locali;
+- report personali non destinati al repository.
+
+La cartella `reports/` è esclusa tramite `.gitignore`.
 
 ## Stati usati
 
