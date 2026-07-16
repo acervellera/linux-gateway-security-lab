@@ -1,32 +1,92 @@
 # Indice della documentazione
 
+## Punto di ingresso
+
+Per seguire il progetto nell'ordine corretto:
+
+1. leggere [`OBIETTIVI_E_PROGETTO.md`](OBIETTIVI_E_PROGETTO.md) per capire architettura fisica e laboratorio virtuale;
+2. controllare [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md) per sapere che cosa è realmente verificato;
+3. consultare [`00-ROADMAP.md`](00-ROADMAP.md) per l'ordine delle fasi;
+4. seguire le guide operative nella cartella [`steps`](steps).
+
 ## Documenti principali
 
-- [`00-ROADMAP.md`](00-ROADMAP.md): tutte le fasi del progetto e i criteri di completamento.
-- [`01-METODO-DI-LAVORO.md`](01-METODO-DI-LAVORO.md): regole per comandi, codice, verifiche e rollback.
-- [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md): ciò che risulta verificato e ciò che resta da fare.
-- [`TEMPLATE-FASE.md`](TEMPLATE-FASE.md): modello da usare per aggiornare o aggiungere una fase.
+- [`OBIETTIVI_E_PROGETTO.md`](OBIETTIVI_E_PROGETTO.md): descrive il gateway fisico Ubuntu come percorso principale e il laboratorio Kali/Parrot come ambiente secondario isolato.
+- [`00-ROADMAP.md`](00-ROADMAP.md): elenca tutte le fasi e i criteri di completamento.
+- [`01-METODO-DI-LAVORO.md`](01-METODO-DI-LAVORO.md): definisce regole per comandi, verifiche, privacy e rollback.
+- [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md): contiene lo stato operativo verificato più aggiornato.
+- [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md): riassume la storia del progetto, il lavoro virtuale iniziale e il passaggio al gateway fisico.
+- [`TEMPLATE-FASE.md`](TEMPLATE-FASE.md): modello per aggiungere o aggiornare una fase.
 
 ## Guide operative
 
-Le guide sono nella cartella [`steps`](steps) e devono essere seguite in ordine numerico.
+Le guide nella cartella [`steps`](steps) devono essere seguite in ordine numerico.
 
-Ogni guida parte come `DA FARE` o `IN CORSO` e viene segnata `COMPLETATO` solo dopo una prova reale.
+Ogni guida:
 
-## Documenti precedenti
+- parte come `DA FARE` o `IN CORSO`;
+- contiene comandi realmente eseguiti;
+- spiega opzioni e modifiche prodotte;
+- include verifiche e rollback;
+- viene segnata `COMPLETATA` solo dopo una prova reale.
 
-I file seguenti appartengono alla prima impostazione del laboratorio virtuale e restano disponibili come storico tecnico:
+Stato sintetico corrente:
 
-- [`OBIETTIVI_E_PROGETTO.md`](OBIETTIVI_E_PROGETTO.md);
-- [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md).
+```text
+Fase 1  inventario hardware e rete      COMPLETATA
+Fase 2  topologia e indirizzamento      COMPLETATA
+Fase 3  hotspot Realtek                 COMPLETATA
+Fase 4  DHCP, routing e NAT             PROSSIMA
+```
 
-Non sono più il punto di ingresso principale. Le nuove attività sul gateway Ubuntu fisico devono essere registrate nei documenti numerati.
+## Due ambienti distinti
+
+### Gateway fisico principale
+
+```text
+Client autorizzato
+  -> Realtek USB AP
+  -> Ubuntu gateway
+  -> MediaTek uplink
+  -> Internet
+```
+
+È il percorso principale delle guide numerate.
+
+### Laboratorio virtuale secondario
+
+```text
+Parrot VM
+  -> Kali VM gateway
+  -> rete libvirt default
+  -> Ubuntu host
+  -> Internet
+```
+
+Serve per esperimenti isolati e non sostituisce lo stato delle fasi del gateway fisico.
+
+## Report privati
+
+La cartella locale:
+
+```text
+reports/
+```
+
+è ignorata da Git. Può contenere output integrali, screenshot originali e report privati con dati locali.
+
+Prima di affidarsi al `.gitignore`, verificare con:
+
+```bash
+git check-ignore -v reports/<FILE>
+```
 
 ## Regola di aggiornamento
 
-Dopo ogni sessione di laboratorio aggiornare almeno:
+Dopo ogni sessione aggiornare almeno:
 
 1. il documento della fase corrente;
 2. `02-STATO-ATTUALE.md`;
 3. eventuali configurazioni o script realmente verificati;
-4. la roadmap solo se cambia l'ordine o l'ambito del progetto.
+4. la roadmap se cambia ordine o ambito;
+5. `OBIETTIVI_E_PROGETTO.md` soltanto quando cambia l'architettura generale.
