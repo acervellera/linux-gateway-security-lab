@@ -63,8 +63,6 @@ wlx<REDACTED>          Realtek USB
 <ETHERNET_IF>          Ethernet senza portante
 docker0               bridge Docker
 br-<REDACTED>          bridge Docker personalizzato
-virbr0                rete libvirt default
-virbr1                rete libvirt isolata
 ```
 
 ## Capacità Wi-Fi verificate
@@ -129,7 +127,7 @@ Sono stati rimossi o mascherati:
 - [x] Realtek USB e relativo driver verificati;
 - [x] supporto della modalità AP dichiarato;
 - [x] stato IPv4 e route predefinita verificati;
-- [x] bridge Docker e reti libvirt osservati;
+- [x] bridge e reti Docker osservati;
 - [x] nessuna configurazione di rete modificata;
 - [x] dati pubblici anonimizzati.
 

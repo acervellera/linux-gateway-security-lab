@@ -2,27 +2,14 @@
 
 ## Funzione del documento
 
-Questo file riassume l'evoluzione reale del progetto e distingue:
+Questo file riassume l'evoluzione reale del progetto:
 
-- laboratorio virtuale Kali/Parrot;
 - gateway fisico Ubuntu;
 - fasi operative verificate.
 
 Per lo stato più aggiornato usare [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md). Per comandi e rollback usare [`steps`](steps).
 
-## Laboratorio virtuale secondario
-
-```text
-Parrot VM
-  -> Kali VM gateway
-  -> rete libvirt
-  -> Ubuntu host
-  -> Internet
-```
-
-Resta disponibile per esperimenti isolati, ma non sostituisce la roadmap del gateway fisico.
-
-## Gateway fisico principale
+## Gateway fisico
 
 ```text
 Telefono / dispositivo autorizzato
@@ -44,7 +31,7 @@ Verificati:
 - supporto AP;
 - route predefinita;
 - rfkill;
-- reti Docker e libvirt.
+- reti Docker.
 
 ## Fase 2 completata — Topologia
 
@@ -190,7 +177,7 @@ La prossima attività è [`steps/05-firewall-nftables.md`](steps/05-firewall-nft
 Ordine previsto:
 
 1. salvare il ruleset corrente;
-2. riconoscere le regole gestite da NetworkManager, Docker e libvirt;
+2. riconoscere le regole gestite da NetworkManager e Docker;
 3. preparare rollback;
 4. applicare policy stateful;
 5. consentire `established,related`;

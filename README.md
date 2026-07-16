@@ -44,20 +44,6 @@ Telefono / portatile / dispositivo autorizzato
 
 Le prime quattro fasi sono state completate: hardware inventariato, piano IP definito, hotspot reale verificato e percorso DHCP/routing/NAT dimostrato con catture prima e dopo la traduzione. L'hotspot usa WPA2-RSN con CCMP/AES.
 
-## Laboratorio virtuale secondario
-
-Il repository conserva anche un laboratorio KVM/libvirt:
-
-```text
-Parrot VM
-    -> Kali VM gateway
-    -> rete libvirt default
-    -> Ubuntu host
-    -> Internet
-```
-
-Kali rappresenta il gateway e Parrot il client. Questo ambiente serve per esperimenti isolati e snapshot, ma non sostituisce la roadmap principale del gateway fisico.
-
 ## Metodo di lavoro
 
 Il progetto viene costruito una fase alla volta. Ogni fase deve contenere:

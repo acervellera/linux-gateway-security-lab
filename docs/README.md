@@ -4,18 +4,18 @@
 
 Per seguire il progetto nell'ordine corretto:
 
-1. leggere [`OBIETTIVI_E_PROGETTO.md`](OBIETTIVI_E_PROGETTO.md) per capire architettura fisica e laboratorio virtuale;
+1. leggere [`OBIETTIVI_E_PROGETTO.md`](OBIETTIVI_E_PROGETTO.md) per capire obiettivi e architettura fisica;
 2. controllare [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md) per sapere che cosa è realmente verificato;
 3. consultare [`00-ROADMAP.md`](00-ROADMAP.md) per l'ordine delle fasi;
 4. seguire le guide operative nella cartella [`steps`](steps).
 
 ## Documenti principali
 
-- [`OBIETTIVI_E_PROGETTO.md`](OBIETTIVI_E_PROGETTO.md): descrive il gateway fisico Ubuntu come percorso principale e il laboratorio Kali/Parrot come ambiente secondario isolato.
+- [`OBIETTIVI_E_PROGETTO.md`](OBIETTIVI_E_PROGETTO.md): descrive obiettivi, componenti e architettura del gateway fisico Ubuntu.
 - [`00-ROADMAP.md`](00-ROADMAP.md): elenca tutte le fasi e i criteri di completamento.
 - [`01-METODO-DI-LAVORO.md`](01-METODO-DI-LAVORO.md): definisce regole per comandi, verifiche, privacy e rollback.
 - [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md): contiene lo stato operativo verificato più aggiornato.
-- [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md): riassume la storia del progetto, il lavoro virtuale iniziale e il passaggio al gateway fisico.
+- [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md): riassume il lavoro verificato e le prossime fasi del gateway fisico.
 - [`TEMPLATE-FASE.md`](TEMPLATE-FASE.md): modello per aggiungere o aggiornare una fase.
 
 ## Guide operative
@@ -40,9 +40,7 @@ Fase 4  DHCP, routing e NAT             COMPLETATA
 Fase 5  firewall nftables               PROSSIMA
 ```
 
-## Due ambienti distinti
-
-### Gateway fisico principale
+## Architettura sintetica
 
 ```text
 Client autorizzato
@@ -52,19 +50,7 @@ Client autorizzato
   -> Internet
 ```
 
-È il percorso principale delle guide numerate.
-
-### Laboratorio virtuale secondario
-
-```text
-Parrot VM
-  -> Kali VM gateway
-  -> rete libvirt default
-  -> Ubuntu host
-  -> Internet
-```
-
-Serve per esperimenti isolati e non sostituisce lo stato delle fasi del gateway fisico.
+È il percorso seguito da tutte le guide numerate.
 
 ## Sample pubblici
 

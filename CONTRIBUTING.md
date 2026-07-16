@@ -16,7 +16,7 @@ Contributi, correzioni e miglioramenti sono benvenuti, purché mantengano il pro
 ## Prima di proporre una modifica
 
 1. verificare che non siano presenti password, token, MAC reali o dati personali;
-2. testare in una macchina virtuale o rete isolata;
+2. testare su una rete di laboratorio isolata e autorizzata;
 3. aggiornare la documentazione;
 4. descrivere il comportamento atteso;
 5. indicare distribuzione e versione usate;
@@ -58,11 +58,11 @@ CLIENT_IP
 Le configurazioni di esempio possono usare:
 
 ```text
-WAN_IFACE=eth0
-LAN_IFACE=eth1
-LAN_SUBNET=10.10.10.0/24
-GATEWAY_IP=10.10.10.2
-CLIENT_IP=10.10.10.3
+WAN_IFACE=wlp13s0
+LAN_IFACE=wlx<REDACTED>
+LAN_SUBNET=10.42.0.0/24
+GATEWAY_IP=10.42.0.1
+CLIENT_IP=10.42.0.x
 ```
 
 ## Commit

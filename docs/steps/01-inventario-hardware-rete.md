@@ -79,16 +79,13 @@ Indirizzo IPv4: non assegnato
 
 L'interfaccia Ethernet è disponibile come alternativa futura, ma al momento non ha collegamento fisico.
 
-### Reti virtuali già presenti
+### Reti Docker già presenti
 
-Sono state osservate reti create da libvirt e Docker:
+Sono state osservate reti create da Docker:
 
 ```text
-virbr0   192.168.122.1/24   rete libvirt default
-virbr1   10.10.10.1/24      rete isolata di laboratorio
 docker0  172.17.0.1/16      bridge Docker predefinito
 br-*     172.18.0.1/16      bridge Docker personalizzato
-vnet1 e vnet2               interfacce di VM attive
 ```
 
 Queste reti devono essere considerate nella fase 2 per evitare sovrapposizioni con la subnet dell'hotspot.
@@ -150,7 +147,7 @@ Modalità osservate:
 - [x] verificare il driver Realtek sul kernel corrente;
 - [x] verificare la modalità `AP` esposta da `phy8`;
 - [x] controllare `rfkill`;
-- [x] inventariare le reti Docker e libvirt;
+- [x] inventariare le reti Docker;
 - [x] anonimizzare i risultati destinati al repository.
 
 ## Valori acquisiti
@@ -177,7 +174,7 @@ La fase è completata perché sono stati verificati:
 5. hardware e driver Realtek;
 6. supporto dichiarato della modalità `AP`;
 7. assenza di blocchi `rfkill`;
-8. reti Docker e libvirt già presenti;
+8. reti Docker già presenti;
 9. separazione tra uplink e futura interfaccia hotspot.
 
 ## Modifiche effettuate

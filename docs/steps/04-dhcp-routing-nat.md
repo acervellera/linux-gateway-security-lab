@@ -147,7 +147,7 @@ net.ipv4.ip_forward = 1
 
 Il valore era già attivo. Non è stato modificato manualmente durante la fase.
 
-Questo è importante per il rollback: non bisogna impostare automaticamente il valore a `0`, perché Docker, libvirt o altre connessioni condivise potrebbero dipendere dal forwarding globale.
+Questo è importante per il rollback: non bisogna impostare automaticamente il valore a `0`, perché Docker o altre connessioni condivise potrebbero dipendere dal forwarding globale.
 
 ## 4. Profilo NetworkManager condiviso
 
@@ -260,7 +260,7 @@ Interpretazione:
 - il kernel sostituisce l'indirizzo sorgente con quello della MediaTek;
 - i contatori non nulli hanno confermato traffico reale.
 
-Sono presenti anche regole appartenenti a Docker e libvirt. Non devono essere confuse con quelle dell'hotspot.
+Sono presenti anche regole appartenenti a Docker. Non devono essere confuse con quelle dell'hotspot.
 
 Non è stato usato:
 
@@ -521,7 +521,7 @@ sudo nmcli connection up security-gateway-ap
 
 Non usare un `flush ruleset` globale.
 
-Non impostare automaticamente `net.ipv4.ip_forward=0`: il valore non è stato abilitato manualmente in questa fase e potrebbe essere richiesto da Docker, libvirt o altre connessioni condivise.
+Non impostare automaticamente `net.ipv4.ip_forward=0`: il valore non è stato abilitato manualmente in questa fase e potrebbe essere richiesto da Docker o altre connessioni condivise.
 
 Per tornare alle impostazioni crittografiche automatiche precedenti, soltanto se necessario:
 

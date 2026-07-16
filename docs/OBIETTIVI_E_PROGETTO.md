@@ -12,7 +12,7 @@ Le finalità sono collegate:
 4. imparare Python sviluppando programmi che leggono log e stato della rete;
 5. usare Docker per database e dashboard senza affidargli il routing principale.
 
-Il progetto era stato inizialmente concepito come laboratorio virtuale con Kali e Parrot. Durante lo sviluppo è stato però realizzato e verificato direttamente il **gateway fisico Ubuntu**, che è ora il percorso operativo principale. Il laboratorio virtuale resta utile come ambiente secondario isolato per esperimenti rischiosi e confronti didattici.
+L'intero percorso operativo è basato sul **gateway fisico Ubuntu**, collegato a dispositivi reali autorizzati attraverso l'hotspot Wi-Fi del laboratorio.
 
 Lo stato realmente verificato è registrato in [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md) e nelle guide numerate della cartella [`steps`](steps).
 
@@ -129,60 +129,9 @@ La navigazione funziona già empiricamente tramite `ipv4.method=shared`; DHCP, D
 
 ---
 
-## 5. Laboratorio virtuale secondario
+## 5. Livelli del sistema finale
 
-Il laboratorio KVM/QEMU con Kali e Parrot non è stato eliminato. Ha un ruolo diverso: permette di sperimentare senza rischiare di interrompere la rete dell'host fisico.
-
-```text
-Internet
-   |
-Ubuntu host
-   |
-rete libvirt default 192.168.122.0/24
-   |
-Kali VM
-|-- eth0: WAN tramite DHCP
-`-- eth1: LAN 10.10.10.2/24
-          |
-          | rete isolata lab-lan
-          v
-Parrot VM
-10.10.10.3/24
-Gateway: 10.10.10.2
-```
-
-Nel laboratorio virtuale:
-
-- Kali rappresenta il gateway/router;
-- Parrot rappresenta il client;
-- Parrot non deve avere un collegamento diretto alla rete libvirt `default`;
-- tutto il suo traffico esterno deve passare da Kali.
-
-Questa topologia insegna gli stessi concetti del gateway fisico, ma con kernel, route, firewall e snapshot separati dall'host Ubuntu.
-
----
-
-## 6. Relazione tra ambiente fisico e virtuale
-
-I due ambienti non sono concorrenti.
-
-| Concetto | Gateway fisico | Laboratorio virtuale |
-|---|---|---|
-| Client | telefono o portatile | Parrot VM |
-| Gateway | Ubuntu host | Kali VM |
-| Interfaccia LAN | Realtek USB AP | `eth1` di Kali |
-| Interfaccia WAN | MediaTek `wlp13s0` | `eth0` di Kali |
-| Rete interna | `10.42.0.0/24` | `10.10.10.0/24` |
-| Uscita | router domestico | rete libvirt `default` |
-| Uso principale | test reali e monitoraggio | esperimenti isolati e snapshot |
-
-Il gateway fisico è il percorso principale della roadmap attuale. Il laboratorio virtuale resta un esercizio parallelo e non deve essere confuso con lo stato delle fasi numerate del gateway Ubuntu.
-
----
-
-## 7. Livelli del sistema finale
-
-### 7.1 Livello di rete
+### 5.1 Livello di rete
 
 Ubuntu dovrà svolgere le funzioni di:
 
@@ -193,7 +142,7 @@ Ubuntu dovrà svolgere le funzioni di:
 - punto di monitoraggio;
 - sorgente di log e contatori.
 
-### 7.2 Livello di osservazione
+### 5.2 Livello di osservazione
 
 Verranno usati:
 
@@ -204,7 +153,7 @@ Verranno usati:
 - Suricata per eventi IDS;
 - Zeek per log di connessione, DNS, HTTP e TLS.
 
-### 7.3 Livello Python
+### 5.3 Livello Python
 
 Python verrà usato per:
 
@@ -218,7 +167,7 @@ Python verrà usato per:
 
 Ogni script dovrà includere import spiegati, funzioni piccole, commenti didattici, gestione degli errori e dati di esempio anonimizzati.
 
-### 7.4 Livello Docker
+### 5.4 Livello Docker
 
 Docker verrà usato in seguito per:
 
@@ -231,17 +180,17 @@ Il routing principale rimane nel sistema operativo Ubuntu. I container non devon
 
 ---
 
-## 8. Concetti da imparare
+## 6. Concetti da imparare
 
 Il progetto deve permettere di comprendere:
 
-- interfacce fisiche e virtuali;
+- interfacce di rete fisiche;
 - link, indirizzi MAC e IPv4;
 - subnet e notazione CIDR;
 - DHCP e configurazione statica;
 - gateway e tabella di routing;
 - metriche delle rotte;
-- bridge e reti libvirt/Docker;
+- bridge e reti Docker;
 - forwarding del kernel;
 - firewall stateful;
 - connection tracking;
@@ -254,7 +203,7 @@ Il progetto deve permettere di comprendere:
 
 ---
 
-## 9. Funzioni principali
+## 7. Funzioni principali
 
 ### Router
 
@@ -262,7 +211,7 @@ Collega reti IP differenti e sceglie dove inoltrare un pacchetto.
 
 ### Gateway
 
-È il punto di uscita usato dai client. Nel gateway fisico è Ubuntu; nel laboratorio virtuale è Kali.
+È il punto di uscita usato dai client. In questo progetto il gateway è il sistema Ubuntu fisico.
 
 ### Bridge
 
@@ -286,23 +235,7 @@ Intermedia protocolli applicativi specifici. Non sostituisce il routing generale
 
 ---
 
-## 10. Perché mantenere le VM
-
-Una VM possiede:
-
-- un proprio kernel;
-- proprie interfacce;
-- propria tabella di routing;
-- propri parametri `sysctl`;
-- proprie regole `nftables`;
-- una console indipendente;
-- snapshot ripristinabili.
-
-Le VM saranno utili per provare regole potenzialmente distruttive prima di applicare concetti equivalenti al gateway fisico.
-
----
-
-## 11. Informazioni osservabili
+## 8. Informazioni osservabili
 
 Senza decifrare HTTPS, il gateway può normalmente osservare:
 
@@ -319,7 +252,7 @@ Il contenuto HTTPS resta cifrato. Il progetto non ha lo scopo di intercettare cr
 
 ---
 
-## 12. Criteri di completamento del progetto fisico
+## 9. Criteri di completamento del progetto fisico
 
 Il progetto sarà completato quando un dispositivo autorizzato:
 
@@ -338,7 +271,7 @@ I primi quattro punti sono già stati osservati; le guide numerate documentano l
 
 ---
 
-## 13. Regole di sicurezza e privacy
+## 10. Regole di sicurezza e privacy
 
 Il progetto deve essere usato soltanto su:
 
@@ -364,7 +297,7 @@ I dati completi devono restare nella cartella locale `reports/`, esclusa tramite
 
 ---
 
-## 14. Documentazione autorevole
+## 11. Documentazione autorevole
 
 Per evitare incoerenze:
 
@@ -372,4 +305,4 @@ Per evitare incoerenze:
 2. [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md) descrive lo stato verificato;
 3. [`steps/`](steps) contiene comandi, test e rollback delle singole fasi;
 4. questo documento descrive obiettivi e architettura generale;
-5. [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md) riassume la cronologia storica e il passaggio dal laboratorio virtuale al gateway fisico.
+5. [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md) riassume la cronologia del lavoro e i prossimi passi del gateway fisico.

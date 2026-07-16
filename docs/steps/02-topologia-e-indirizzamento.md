@@ -21,7 +21,7 @@ Definire prima delle modifiche:
 - banda e canale iniziali;
 - comportamento IPv6;
 - percorso previsto dei pacchetti;
-- convivenza con Docker, libvirt e rete locale.
+- convivenza con Docker e rete locale.
 
 ## Metodo usato
 
@@ -32,7 +32,6 @@ ip -4 route
 ip -4 address
 nmcli device status
 nmcli connection show
-virsh net-list --all
 sudo docker network ls
 sudo docker network inspect <RETE>
 iw dev
@@ -84,8 +83,6 @@ Sono state verificate le seguenti subnet:
 | Subnet | Utilizzo |
 |---|---|
 | `192.168.10.0/24` | rete locale dell'uplink |
-| `192.168.122.0/24` | rete libvirt `default` |
-| `10.10.10.0/24` | rete libvirt isolata `lab-lan` |
 | `172.17.0.0/16` | bridge Docker predefinito |
 | `172.18.0.0/16` | bridge Docker del laboratorio Python |
 
@@ -104,7 +101,6 @@ non compare tra:
 - rotte IPv4 attive o registrate dal kernel;
 - indirizzi assegnati alle interfacce;
 - profili NetworkManager;
-- reti libvirt;
 - reti Docker.
 
 Il controllo non può garantire che una rete esterna futura non usi la stessa subnet, ma conferma che non esiste un conflitto nell'ambiente osservato durante la fase 2.
@@ -293,7 +289,6 @@ I valori completi appartengono esclusivamente al report locale ignorato da Git.
 - [x] nomi e ruoli delle interfacce verificati;
 - [x] capacità `AP` dichiarata dalla Realtek;
 - [x] reti NetworkManager inventariate;
-- [x] reti libvirt inventariate;
 - [x] subnet Docker verificate con `docker network inspect`;
 - [x] nessun conflitto locale per `10.42.0.0/24`;
 - [x] gateway e intervallo DHCP definiti;

@@ -58,7 +58,7 @@ Sono stati verificati:
 - interfaccia realmente usata per Internet;
 - gestione NetworkManager;
 - assenza di blocchi `rfkill`;
-- servizi e reti virtuali già presenti.
+- servizi e reti Docker già presenti.
 
 ## Fase 2 — Topologia e piano IP
 
@@ -76,7 +76,7 @@ WIFI_BAND=2.4GHz
 WIFI_CHANNEL=6
 ```
 
-La rete `10.42.0.0/24` non si sovrappone alle reti dell'uplink, libvirt o Docker osservate.
+La rete `10.42.0.0/24` non si sovrappone alle reti dell'uplink o di Docker osservate.
 
 ## Fase 3 — Hotspot Realtek
 
@@ -139,7 +139,7 @@ Prossima fase.
 Obiettivi:
 
 - salvare lo stato firewall corrente;
-- distinguere regole automatiche di NetworkManager, Docker e libvirt;
+- distinguere regole automatiche di NetworkManager e Docker;
 - creare catene e policy stateful;
 - consentire `established,related`;
 - limitare il forwarding dalla subnet hotspot all'uplink;

@@ -17,7 +17,7 @@ Costruire un gateway fisico Ubuntu nel quale:
 
 ### Fase 1 — Inventario hardware e rete
 
-Verificati sistema, kernel, MediaTek, Realtek, driver, supporto AP, route, rfkill e reti virtuali esistenti.
+Verificati sistema, kernel, MediaTek, Realtek, driver, supporto AP, route, rfkill e reti Docker esistenti.
 
 ### Fase 2 — Topologia e indirizzamento
 
@@ -35,7 +35,7 @@ WIFI_BAND=2.4GHz
 WIFI_CHANNEL=6
 ```
 
-La subnet non si sovrappone a rete domestica, libvirt o Docker.
+La subnet non si sovrappone alla rete domestica o alle reti Docker.
 
 ### Fase 3 — Hotspot Realtek
 

@@ -28,8 +28,6 @@ Il nome completo della Realtek e gli indirizzi MAC sono stati rimossi perché id
 
 ```text
 192.168.10.0/24    uplink locale
-192.168.122.0/24   libvirt default
-10.10.10.0/24      libvirt lab-lan
 172.17.0.0/16      Docker bridge
 172.18.0.0/16      Docker cyber lab
 ```
@@ -51,7 +49,7 @@ IPV6_MODE=disabled-on-hotspot-initially
 CLIENT_ISOLATION=enable-if-supported
 ```
 
-La subnet `10.42.0.0/24` non risultava presente nelle rotte, negli indirizzi, nei profili NetworkManager, nelle reti libvirt o nelle reti Docker osservate.
+La subnet `10.42.0.0/24` non risultava presente nelle rotte, negli indirizzi, nei profili NetworkManager o nelle reti Docker osservate.
 
 ## Scelta Wi-Fi
 
@@ -95,7 +93,6 @@ ip -4 route
 ip -4 address
 nmcli device status
 nmcli connection show
-virsh net-list --all
 sudo docker network ls
 sudo docker network inspect <RETE>
 iw dev
@@ -120,7 +117,7 @@ Sono stati rimossi o mascherati:
 - [x] uplink identificato;
 - [x] interfaccia AP identificata e anonimizzata;
 - [x] supporto AP dichiarato;
-- [x] reti Docker e libvirt verificate;
+- [x] reti Docker verificate;
 - [x] subnet senza conflitti locali scelta;
 - [x] gateway, DHCP e DNS definiti;
 - [x] profilo, SSID, banda e canale definiti;

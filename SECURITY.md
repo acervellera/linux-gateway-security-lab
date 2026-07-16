@@ -5,8 +5,8 @@
 Questo progetto è destinato esclusivamente a:
 
 - reti proprie;
-- macchine virtuali di laboratorio;
 - dispositivi propri;
+- gateway fisici di laboratorio;
 - ambienti per i quali si dispone di autorizzazione esplicita.
 
 Non utilizzare configurazioni, catture o strumenti del progetto per osservare, modificare o interrompere traffico di terzi senza autorizzazione.
@@ -53,7 +53,7 @@ In caso di pubblicazione accidentale:
 
 Prima di modificare routing, forwarding o firewall:
 
-- creare uno snapshot della VM;
+- salvare una copia delle configurazioni correnti;
 - mantenere aperta una console locale;
 - salvare `ip address`, `ip route` e `nft list ruleset`;
 - verificare l'hostname;
