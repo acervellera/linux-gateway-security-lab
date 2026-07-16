@@ -42,7 +42,7 @@ Telefono / portatile / dispositivo autorizzato
                  Internet
 ```
 
-Le prime tre fasi sono state completate: hardware inventariato, piano IP definito e hotspot reale verificato con client, navigazione, rollback e comportamento dopo riavvio.
+Le prime quattro fasi sono state completate: hardware inventariato, piano IP definito, hotspot reale verificato e percorso DHCP/routing/NAT dimostrato con catture prima e dopo la traduzione. L'hotspot usa WPA2-RSN con CCMP/AES.
 
 ## Laboratorio virtuale secondario
 
@@ -97,6 +97,7 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale.
 |   |-- 01-METODO-DI-LAVORO.md
 |   |-- 02-STATO-ATTUALE.md
 |   |-- TEMPLATE-FASE.md
+|   |-- images/
 |   `-- steps/
 |       |-- 01-inventario-hardware-rete.md
 |       |-- 02-topologia-e-indirizzamento.md
@@ -113,7 +114,7 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale.
 |-- scripts/      script Bash di supporto
 |-- python/       programmi Python commentati
 |-- docker/       compose, database e dashboard
-|-- samples/      esempi pubblici anonimizzati: report, output e log revisionati
+|-- samples/      esempi pubblici anonimizzati: report, output e immagini revisionate
 `-- reports/      report privati locali ignorati da Git
 ```
 
@@ -125,6 +126,7 @@ Le directory tecniche vengono riempite soltanto quando la relativa fase è stata
 
 - report pubblici anonimizzati delle fasi completate;
 - output brevi con dati sensibili rimossi;
+- screenshot ritagliati o ricostruiti;
 - in futuro, estratti di log revisionati e dati di esempio per gli script Python.
 
 `reports/` contiene invece materiale privato locale:
@@ -157,7 +159,8 @@ Non pubblicare:
 - indirizzi MAC non necessari;
 - catture `.pcap` non revisionate;
 - log contenenti dati personali;
-- traffico appartenente a terzi.
+- traffico appartenente a terzi;
+- screenshot originali non revisionati.
 
 I report completi restano nella cartella locale `reports/`, esclusa tramite `.gitignore`.
 

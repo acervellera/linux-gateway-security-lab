@@ -36,7 +36,8 @@ Stato sintetico corrente:
 Fase 1  inventario hardware e rete      COMPLETATA
 Fase 2  topologia e indirizzamento      COMPLETATA
 Fase 3  hotspot Realtek                 COMPLETATA
-Fase 4  DHCP, routing e NAT             PROSSIMA
+Fase 4  DHCP, routing e NAT             COMPLETATA
+Fase 5  firewall nftables               PROSSIMA
 ```
 
 ## Due ambienti distinti
@@ -71,9 +72,15 @@ La cartella [`../samples`](../samples) contiene materiale pubblico anonimizzato:
 
 - report sintetici delle fasi completate;
 - output brevi revisionati;
+- screenshot revisionati;
 - futuri estratti di log, JSON o CSV per gli script Python.
 
-Non contiene report privati. Le regole dettagliate sono in [`../samples/README.md`](../samples/README.md).
+Per la fase 4 sono disponibili:
+
+- [`../samples/04-dhcp-routing-nat-report.md`](../samples/04-dhcp-routing-nat-report.md);
+- [`../samples/04-dhcp-routing-nat-output.md`](../samples/04-dhcp-routing-nat-output.md).
+
+Le regole dettagliate sono in [`../samples/README.md`](../samples/README.md).
 
 ## Report privati
 

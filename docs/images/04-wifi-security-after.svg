@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="760" viewBox="0 0 900 760" role="img" aria-labelledby="title desc">
+  <title id="title">Stato iOS dopo la correzione Wi-Fi</title>
+  <desc id="desc">Ricostruzione anonimizzata della schermata senza avviso di sicurezza debole dopo WPA2 RSN CCMP.</desc>
+  <rect width="900" height="760" fill="#f2f2f7"/>
+  <text x="450" y="72" text-anchor="middle" font-family="system-ui, sans-serif" font-size="38" font-weight="700" fill="#111">SecurityGatewayLab</text>
+  <rect x="55" y="125" width="790" height="105" rx="38" fill="#fff"/>
+  <text x="95" y="192" font-family="system-ui, sans-serif" font-size="34" fill="#007aff">Dissocia questa rete</text>
+  <rect x="55" y="280" width="790" height="210" rx="38" fill="#fff"/>
+  <text x="95" y="355" font-family="system-ui, sans-serif" font-size="34" fill="#111">Accesso automatico</text>
+  <rect x="660" y="315" width="125" height="62" rx="31" fill="#34c759"/>
+  <circle cx="754" cy="346" r="27" fill="#fff"/>
+  <line x1="95" y1="400" x2="805" y2="400" stroke="#ddd" stroke-width="2"/>
+  <text x="95" y="458" font-family="system-ui, sans-serif" font-size="34" fill="#111">Password</text>
+  <text x="450" y="570" text-anchor="middle" font-family="system-ui, sans-serif" font-size="32" font-weight="700" fill="#1d7f38">Nessun avviso di sicurezza debole</text>
+  <text x="450" y="625" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" fill="#555">WPA2-RSN · CCMP/AES</text>
+  <text x="450" y="690" text-anchor="middle" font-family="system-ui, sans-serif" font-size="23" fill="#666">Ricostruzione pubblica anonimizzata dello screenshot reale</text>
+</svg>
