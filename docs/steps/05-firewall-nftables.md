@@ -3,8 +3,10 @@
 ## Stato
 
 ```text
-DA FARE
+IN CORSO
 ```
+
+Fase avviata il 16 luglio 2026. Il ruleset definitivo verrà pubblicato soltanto dopo una prova reale e un rollback verificato.
 
 ## Obiettivo
 
