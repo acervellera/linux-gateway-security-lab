@@ -14,50 +14,53 @@ Laboratorio didattico per costruire un gateway di sicurezza su Ubuntu e imparare
 
 > Usare il progetto esclusivamente su reti, sistemi e dispositivi propri o esplicitamente autorizzati.
 
-## Nome del progetto
+## Architettura principale
 
-Il nome scelto per il progetto è **Ubuntu Security Gateway Lab**.
-
-Slug GitHub consigliato:
+Il percorso operativo principale è il gateway fisico Ubuntu:
 
 ```text
-ubuntu-security-gateway-lab
+Telefono / portatile / dispositivo autorizzato
+                    |
+                    v
+        Realtek USB usata come hotspot
+                    |
+                    v
+              Ubuntu gateway
+              |-- hotspot e DHCP iniziale
+              |-- routing IPv4 e NAT
+              |-- nftables
+              |-- tcpdump
+              |-- Suricata
+              |-- Zeek
+              |-- Python
+              `-- Docker per servizi applicativi
+                    |
+                    v
+        MediaTek interna usata come uplink
+                    |
+                    v
+                 Internet
 ```
 
-Il repository può conservare temporaneamente il vecchio slug `linux-gateway-security-lab` senza compromettere la struttura dei file.
+Le prime tre fasi sono state completate: hardware inventariato, piano IP definito e hotspot reale verificato con client, navigazione, rollback e comportamento dopo riavvio.
 
-## Risultato finale
+## Laboratorio virtuale secondario
+
+Il repository conserva anche un laboratorio KVM/libvirt:
 
 ```text
-Telefono / VM / dispositivo di test
-                |
-                v
-       Realtek USB usata come hotspot
-                |
-                v
-          Ubuntu gateway
-          |-- NetworkManager / hostapd: hotspot
-          |-- DHCP e DNS locale
-          |-- routing IPv4 e NAT
-          |-- nftables: firewall
-          |-- tcpdump: cattura pacchetti
-          |-- Suricata: rilevamento eventi
-          |-- Zeek: log di rete
-          |-- Python: analisi e report
-          `-- Docker: database e dashboard
-                |
-                v
-       MediaTek interna usata come uplink
-                |
-                v
-             Internet
+Parrot VM
+    -> Kali VM gateway
+    -> rete libvirt default
+    -> Ubuntu host
+    -> Internet
 ```
+
+Kali rappresenta il gateway e Parrot il client. Questo ambiente serve per esperimenti isolati e snapshot, ma non sostituisce la roadmap principale del gateway fisico.
 
 ## Metodo di lavoro
 
-Il progetto viene costruito una fase alla volta.
-
-Ogni fase deve contenere:
+Il progetto viene costruito una fase alla volta. Ogni fase deve contenere:
 
 1. obiettivo;
 2. teoria necessaria;
@@ -74,10 +77,10 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale.
 
 ## Da dove iniziare
 
-1. Leggere la [roadmap completa](docs/00-ROADMAP.md).
+1. Leggere [obiettivi e architettura](docs/OBIETTIVI_E_PROGETTO.md).
 2. Controllare lo [stato attuale](docs/02-STATO-ATTUALE.md).
-3. Seguire i documenti nella cartella [`docs/steps`](docs/steps).
-4. Aggiornare il documento della fase dopo ogni attività realmente eseguita.
+3. Leggere la [roadmap completa](docs/00-ROADMAP.md).
+4. Seguire i documenti nella cartella [`docs/steps`](docs/steps).
 
 ## Struttura del repository
 
@@ -87,6 +90,9 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale.
 |-- SECURITY.md
 |-- CONTRIBUTING.md
 |-- docs/
+|   |-- README.md
+|   |-- OBIETTIVI_E_PROGETTO.md
+|   |-- LAVORO_SVOLTO_E_PROSSIMI_PASSI.md
 |   |-- 00-ROADMAP.md
 |   |-- 01-METODO-DI-LAVORO.md
 |   |-- 02-STATO-ATTUALE.md
@@ -108,14 +114,12 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale.
 |-- python/       programmi Python commentati
 |-- docker/       compose, database e dashboard
 |-- samples/      esempi di log anonimizzati
-`-- reports/      report locali, normalmente ignorati da Git
+`-- reports/      report locali ignorati da Git
 ```
 
-Le directory tecniche verranno riempite solo quando la relativa fase sarà stata eseguita e verificata.
+Le directory tecniche vengono riempite soltanto quando la relativa fase è stata eseguita e verificata.
 
-## Regola fondamentale
-
-Nel repository distinguiamo sempre tre stati:
+## Stati usati
 
 - **DA FARE**: attività pianificata ma non iniziata;
 - **IN CORSO**: attività iniziata ma non completamente verificata;
@@ -131,10 +135,13 @@ Non pubblicare:
 - SSID domestici reali;
 - token o chiavi private;
 - file `.env` reali;
+- nomi completi `wlx...` quando incorporano MAC;
 - indirizzi MAC non necessari;
 - catture `.pcap` non revisionate;
 - log contenenti dati personali;
 - traffico appartenente a terzi.
+
+I report completi restano nella cartella locale `reports/`, esclusa tramite `.gitignore`.
 
 ## Licenza
 
