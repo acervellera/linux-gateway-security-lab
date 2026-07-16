@@ -8,7 +8,7 @@ IN CORSO — FILTRO FORWARD IMPLEMENTATO E VERIFICATO
 
 Fase avviata il 16 luglio 2026 sul gateway Ubuntu fisico.
 
-Il filtro del traffico inoltrato tra hotspot e uplink è stato caricato e verificato con traffico reale. Il filtro del traffico diretto al gateway, il logging, la persistenza e il test controllato delle regole di blocco restano da completare.
+Il filtro del traffico inoltrato tra hotspot e uplink è stato caricato, verificato con traffico reale, rimosso tramite rollback e ricaricato correttamente. Il filtro del traffico diretto al gateway, il logging, la persistenza e il test controllato delle singole regole di blocco restano da completare.
 
 ## Obiettivo
 
@@ -93,7 +93,7 @@ Le regole osservate permettono:
 - traffico di ritorno `established,related` verso il client;
 - NAT/masquerading limitato alla subnet del laboratorio.
 
-Docker conserva le chain `DOCKER-*`; libvirt conserva le chain `LIBVIRT_*`. La loro presenza è stata ricontrollata dopo il caricamento del filtro del progetto.
+Docker conserva le chain `DOCKER-*`; libvirt conserva le chain `LIBVIRT_*`. La loro presenza è stata ricontrollata dopo il caricamento e dopo il rollback del filtro del progetto.
 
 ## Strategia adottata
 
@@ -241,6 +241,25 @@ Risultato:
 - la navigazione del client è proseguita;
 - DHCP e DNS dell'hotspot non sono stati modificati.
 
+## Rollback e ricaricamento del filtro reale
+
+Il filtro reale è stato rimosso esclusivamente con:
+
+```bash
+sudo nft delete table inet security_gateway_filter
+```
+
+La successiva interrogazione della tabella ha restituito `No such file or directory`, confermandone la rimozione. Le chain dinamiche di NetworkManager, Docker e libvirt sono rimaste presenti e la connettività dell'hotspot ha continuato a dipendere dalle regole dinamiche originali.
+
+Il file è stato poi ricontrollato e ricaricato:
+
+```bash
+sudo nft --check --file "$FILTER_FILE"
+sudo nft --file "$FILTER_FILE"
+```
+
+Dopo la ricarica i contatori sono ripartiti da zero e hanno ricominciato ad aumentare con traffico reale in entrambe le direzioni consentite. Questo verifica sia il rollback sia la possibilità di ripristinare il filtro senza riavviare NetworkManager, Docker o libvirt.
+
 ## Problema incontrato
 
 Durante la prova l'hotspot è stato disattivato manualmente con una richiesta utente. Il log mostrava:
@@ -271,7 +290,7 @@ Questo episodio ha confermato l'importanza di distinguere un problema del firewa
 - [ ] traffico `invalid` generato in modo controllato e bloccato;
 - [x] contatori incrementano;
 - [x] rollback della tabella osservativa verificato;
-- [ ] rollback del filtro reale verificato;
+- [x] rollback e ricaricamento del filtro reale verificati;
 - [x] coesistenza con NetworkManager verificata;
 - [x] presenza delle chain Docker e libvirt verificata;
 - [ ] logging con rate limit verificato;
@@ -309,8 +328,7 @@ La persistenza verrà configurata soltanto dopo:
 2. filtro `INPUT` verificato;
 3. test controllati dei blocchi;
 4. logging con rate limit;
-5. rollback del filtro reale;
-6. prova di riavvio.
+5. prova di riavvio.
 
 ## File previsto
 
