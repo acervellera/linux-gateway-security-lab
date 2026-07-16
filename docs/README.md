@@ -65,6 +65,16 @@ Parrot VM
 
 Serve per esperimenti isolati e non sostituisce lo stato delle fasi del gateway fisico.
 
+## Sample pubblici
+
+La cartella [`../samples`](../samples) contiene materiale pubblico anonimizzato:
+
+- report sintetici delle fasi completate;
+- output brevi revisionati;
+- futuri estratti di log, JSON o CSV per gli script Python.
+
+Non contiene report privati. Le regole dettagliate sono in [`../samples/README.md`](../samples/README.md).
+
 ## Report privati
 
 La cartella locale:
