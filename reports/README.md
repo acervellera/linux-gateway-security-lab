@@ -22,6 +22,23 @@ samples/<numero>-<nome>-report.md
 
 La prima è il report privato completo e rimane esclusa da Git. La seconda è una copia pubblica anonimizzata e revisionata.
 
+Le immagini originali dei report privati devono essere conservate separatamente dai documenti:
+
+```text
+reports/
+|-- images/
+|   |-- <numero>-<descrizione>-original.png
+|   `-- ...
+|-- <report-privato>.md
+`-- README.md
+```
+
+Da un file Markdown collocato direttamente in `reports/`, il riferimento relativo deve quindi avere questa forma:
+
+```markdown
+![Descrizione](images/nome-immagine-original.png)
+```
+
 Esempio per la fase 2:
 
 ```text
