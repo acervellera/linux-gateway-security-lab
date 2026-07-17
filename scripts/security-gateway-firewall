@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+
+# Caricatore verificato per le sole tabelle nftables del laboratorio.
+#
+# Azioni supportate:
+#   security-gateway-firewall load
+#   security-gateway-firewall reload
+#   security-gateway-firewall unload
+#
+# Installazione prevista:
+#   sudo install -o root -g root -m 0755 \
+#       scripts/security-gateway-firewall \
+#       /usr/local/sbin/security-gateway-firewall
+
+# Modalità rigorosa:
+# -E conserva i trap nelle funzioni;
+# -e termina quando un comando fallisce;
+# -u tratta le variabili non definite come errori;
+# pipefail considera fallita una pipeline se fallisce uno dei comandi.
+set -Eeuo pipefail
+
+# I file temporanei saranno accessibili soltanto a root.
+umask 077
+
+# Percorso assoluto: systemd può usare un PATH differente dalla shell.
+NFT="/usr/sbin/nft"
+
+# Directory delle configurazioni installate e protette da root.
+CONFIG_DIR="/etc/security-gateway-firewall"
+INPUT_FILE="$CONFIG_DIR/security-gateway-input-filter.nft"
+FORWARD_FILE="$CONFIG_DIR/security-gateway-filter.nft"
+
+# Lo script può modificare esclusivamente queste tabelle.
+TABLES=(
+    "security_gateway_input_filter"
+    "security_gateway_filter"
+)
+
+# Stampa un errore su stderr e termina con codice 1.
+fail() {
+    printf 'ERRORE: %s\n' "$*" >&2
+    exit 1
+}
+
+# Le operazioni nftables richiedono privilegi amministrativi.
+if [[ "$EUID" -ne 0 ]]; then
+    fail "lo script deve essere eseguito come root."
+fi
+
+# Verifica che nft esista e sia eseguibile.
+if [[ ! -x "$NFT" ]]; then
+    fail "comando nft non trovato o non eseguibile: $NFT"
+fi
+
+# Senza argomento viene eseguito load.
+ACTION="${1:-load}"
+
+# File batch temporaneo sotto /run, che è volatile al riavvio.
+BATCH_FILE="$(mktemp /run/security-gateway-firewall.XXXXXX.nft)"
+
+# Elimina il batch quando lo script termina, anche in caso di errore.
+cleanup() {
+    rm -f "$BATCH_FILE"
+}
+trap cleanup EXIT
+
+# Aggiunge delete table soltanto quando una tabella del progetto esiste.
+# Non modifica tabelle di NetworkManager, Docker, libvirt o altri servizi.
+append_existing_table_deletes() {
+    local table_name
+
+    for table_name in "${TABLES[@]}"; do
+        if "$NFT" list table inet "$table_name" >/dev/null 2>&1; then
+            printf 'delete table inet %s\n' "$table_name" >> "$BATCH_FILE"
+        fi
+    done
+}
+
+case "$ACTION" in
+    load|reload)
+        # Entrambi i file devono esistere e contenere dati.
+        [[ -s "$INPUT_FILE" ]] ||
+            fail "file INPUT assente o vuoto: $INPUT_FILE"
+
+        [[ -s "$FORWARD_FILE" ]] ||
+            fail "file FORWARD assente o vuoto: $FORWARD_FILE"
+
+        # Sostituisce le eventuali vecchie versioni delle nostre tabelle.
+        append_existing_table_deletes
+
+        # Aggiunge le due configurazioni allo stesso batch.
+        cat "$INPUT_FILE" >> "$BATCH_FILE"
+        printf '\n' >> "$BATCH_FILE"
+        cat "$FORWARD_FILE" >> "$BATCH_FILE"
+        ;;
+
+    unload|stop)
+        # Rimuove soltanto le tabelle del laboratorio.
+        append_existing_table_deletes
+        ;;
+
+    *)
+        fail "azione non valida: $ACTION. Usa load, reload o unload."
+        ;;
+esac
+
+# Se unload viene richiesto con tabelle già assenti, non c'è nulla da fare.
+if [[ ! -s "$BATCH_FILE" ]]; then
+    printf 'Nessuna modifica necessaria.\n'
+    exit 0
+fi
+
+# Controlla l'intero batch senza applicarlo.
+# In caso di errore, set -e interrompe lo script e il ruleset resta invariato.
+"$NFT" --check --file "$BATCH_FILE"
+
+# Applica il batch soltanto dopo il controllo riuscito.
+"$NFT" --file "$BATCH_FILE"
+
+case "$ACTION" in
+    load|reload)
+        # Verifica che entrambe le tabelle siano state create.
+        "$NFT" list table inet security_gateway_input_filter >/dev/null
+        "$NFT" list table inet security_gateway_filter >/dev/null
+        printf 'Filtri security gateway caricati correttamente.\n'
+        ;;
+
+    unload|stop)
+        printf 'Filtri security gateway rimossi correttamente.\n'
+        ;;
+esac
