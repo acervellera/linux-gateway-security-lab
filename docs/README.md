@@ -15,7 +15,7 @@ Per seguire il progetto nell'ordine corretto:
 - [`00-ROADMAP.md`](00-ROADMAP.md): elenca tutte le fasi e i criteri di completamento.
 - [`01-METODO-DI-LAVORO.md`](01-METODO-DI-LAVORO.md): definisce regole per comandi, verifiche, privacy e rollback.
 - [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md): contiene lo stato operativo verificato più aggiornato.
-- [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md): riassume il lavoro verificato e le prossime fasi del gateway fisico.
+- [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md): riassume il lavoro verificato e le prossime fasi.
 - [`TEMPLATE-FASE.md`](TEMPLATE-FASE.md): modello per aggiungere o aggiornare una fase.
 
 ## Guide operative
@@ -42,8 +42,9 @@ Fase 5  firewall nftables               COMPLETATA
 Fase 6  cattura tcpdump                 PROSSIMA
 ```
 
-La guida completa della fase firewall è:
+Guide delle ultime fasi completate:
 
+- [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md);
 - [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md).
 
 ## Architettura sintetica
@@ -72,24 +73,20 @@ I file nftables pubblici sono revisionati e contengono un placeholder per il nom
 
 ## Sample pubblici
 
-La cartella [`../samples`](../samples) contiene materiale pubblico anonimizzato:
+La cartella [`../samples`](../samples) contiene materiale pubblico anonimizzato.
 
-- report sintetici delle fasi completate;
-- output brevi revisionati;
-- screenshot revisionati;
-- futuri estratti di log, JSON o CSV per gli script Python.
+Ogni fase completata possiede un report principale direttamente nella radice di `samples/`.
 
-Per la fase 4 sono disponibili:
+Report delle fasi 4 e 5:
 
 - [`../samples/04-dhcp-routing-nat-report.md`](../samples/04-dhcp-routing-nat-report.md);
+- [`../samples/05-firewall-nftables-report.md`](../samples/05-firewall-nftables-report.md).
+
+Output supplementare della fase 4:
+
 - [`../samples/04-dhcp-routing-nat-output.md`](../samples/04-dhcp-routing-nat-output.md).
 
-Per la fase 5 sono disponibili:
-
-- [`../samples/reports/phase-05-firewall-nftables-final.md`](../samples/reports/phase-05-firewall-nftables-final.md);
-- [`../samples/reports/phase-05-forward-filter-checkpoint.md`](../samples/reports/phase-05-forward-filter-checkpoint.md), conservato come checkpoint storico.
-
-Le regole dettagliate sui sample sono in [`../samples/README.md`](../samples/README.md).
+Non viene usata una sottocartella `samples/reports/`. La struttura e le regole di anonimizzazione sono spiegate in [`../samples/README.md`](../samples/README.md).
 
 ## Report privati
 
@@ -115,5 +112,5 @@ Dopo ogni sessione aggiornare almeno:
 2. `02-STATO-ATTUALE.md`;
 3. eventuali configurazioni o script realmente verificati;
 4. la roadmap se cambia ordine o ambito;
-5. i sample pubblici dopo anonimizzazione;
+5. il report principale della fase in `samples/` dopo anonimizzazione;
 6. `OBIETTIVI_E_PROGETTO.md` soltanto quando cambia l'architettura generale.
