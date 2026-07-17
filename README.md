@@ -94,7 +94,25 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale. Gli
 3. Leggere la [roadmap completa](docs/00-ROADMAP.md).
 4. Seguire i documenti nella cartella [`docs/steps`](docs/steps).
 
-La fase firewall completa è documentata in [`docs/steps/05-firewall-nftables.md`](docs/steps/05-firewall-nftables.md).
+Le fasi 4 e 5 sono documentate in:
+
+- [`docs/steps/04-dhcp-routing-nat.md`](docs/steps/04-dhcp-routing-nat.md);
+- [`docs/steps/05-firewall-nftables.md`](docs/steps/05-firewall-nftables.md).
+
+## Report pubblici delle fasi 4 e 5
+
+I report pubblici principali sono direttamente nella radice di `samples/`:
+
+```text
+samples/04-dhcp-routing-nat-report.md
+samples/05-firewall-nftables-report.md
+```
+
+Non viene usata una sottocartella `samples/reports/`.
+
+Il report della fase 4 spiega DHCP, DNS, forwarding, NAT, catture prima e dopo la traduzione e sicurezza WPA2-RSN/CCMP.
+
+Il report della fase 5 spiega filtri `INPUT` e `FORWARD`, test attivi dei blocchi, logging con rate limit, rollback, script amministrativo, servizio systemd e persistenza dopo reboot.
 
 ## Componenti verificati della fase firewall
 
@@ -103,7 +121,7 @@ configs/nftables/security-gateway-input-filter.nft
 configs/nftables/security-gateway-filter.nft
 configs/systemd/security-gateway-firewall.service
 scripts/security-gateway-firewall
-samples/reports/phase-05-firewall-nftables-final.md
+samples/05-firewall-nftables-report.md
 ```
 
 I file nftables pubblici sono revisionati e usano un placeholder per il nome completo dell'interfaccia hotspot. Non devono essere applicati senza aver sostituito il placeholder e controllato la sintassi.
@@ -142,7 +160,7 @@ Il servizio standard `nftables.service` non viene usato nel laboratorio perché 
 |-- scripts/      script Bash di supporto commentati
 |-- python/       programmi Python commentati
 |-- docker/       compose, database e dashboard
-|-- samples/      esempi pubblici anonimizzati: report, output e immagini revisionate
+|-- samples/      report pubblici e output anonimizzati
 `-- reports/      report privati locali ignorati da Git
 ```
 
@@ -150,7 +168,7 @@ Il servizio standard `nftables.service` non viene usato nel laboratorio perché 
 
 `samples/` contiene materiale sicuro da pubblicare e utile come esempio riproducibile:
 
-- report pubblici anonimizzati delle fasi completate;
+- un report principale per ogni fase completata;
 - output brevi con dati sensibili rimossi;
 - screenshot ritagliati o ricostruiti;
 - in futuro, estratti di log revisionati e dati di esempio per gli script Python.
