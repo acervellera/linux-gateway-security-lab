@@ -71,6 +71,14 @@ Risultati:
 - sicurezza Wi-Fi limitata a WPA2-RSN con CCMP/AES;
 - spegnimento e riattivazione dell'hotspot verificati.
 
+Report pubblico principale:
+
+- [`../samples/04-dhcp-routing-nat-report.md`](../samples/04-dhcp-routing-nat-report.md).
+
+Output pubblico supplementare:
+
+- [`../samples/04-dhcp-routing-nat-output.md`](../samples/04-dhcp-routing-nat-output.md).
+
 ### Fase 5 — Firewall nftables
 
 Completata e verificata il 17 luglio 2026.
@@ -109,6 +117,12 @@ Limiti dichiarati della verifica:
 
 - non è stata generata attivamente una nuova connessione da un secondo host dell'uplink verso un client dell'hotspot;
 - non è stato costruito appositamente traffico `ct state invalid`, anche se pochi pacchetti reali `invalid` sono stati osservati e bloccati.
+
+Report pubblico principale:
+
+- [`../samples/05-firewall-nftables-report.md`](../samples/05-firewall-nftables-report.md).
+
+Non viene più usata una sottocartella `samples/reports/`: i report principali delle fasi sono direttamente nella radice di `samples/`.
 
 ## Percorso verificato
 
@@ -176,13 +190,21 @@ L'hotspot resta ad avvio manuale perché `connection.autoconnect=no`.
 
 ## Materiale pubblico
 
+Guide operative:
+
 - [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md);
-- [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md);
+- [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md).
+
+Report pubblici principali:
+
 - [`../samples/04-dhcp-routing-nat-report.md`](../samples/04-dhcp-routing-nat-report.md);
-- [`../samples/reports/phase-05-firewall-nftables-final.md`](../samples/reports/phase-05-firewall-nftables-final.md);
-- configurazioni revisionate in [`../configs/nftables`](../configs/nftables);
-- script revisionato in [`../scripts/security-gateway-firewall`](../scripts/security-gateway-firewall);
-- unità revisionata in [`../configs/systemd/security-gateway-firewall.service`](../configs/systemd/security-gateway-firewall.service).
+- [`../samples/05-firewall-nftables-report.md`](../samples/05-firewall-nftables-report.md).
+
+Configurazioni e script:
+
+- [`../configs/nftables`](../configs/nftables);
+- [`../scripts/security-gateway-firewall`](../scripts/security-gateway-firewall);
+- [`../configs/systemd/security-gateway-firewall.service`](../configs/systemd/security-gateway-firewall.service).
 
 ## Vincoli di pubblicazione
 
