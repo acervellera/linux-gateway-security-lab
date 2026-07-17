@@ -16,7 +16,8 @@ Hotspot Realtek USB
 Ubuntu gateway
       |-- DHCP / DNS locale
       |-- routing e NAT
-      |-- nftables
+      |-- nftables INPUT/FORWARD
+      |-- servizio systemd dedicato
       |-- tcpdump
       |-- Suricata
       |-- Zeek
@@ -38,8 +39,8 @@ Internet
 | 2 | [`steps/02-topologia-e-indirizzamento.md`](steps/02-topologia-e-indirizzamento.md) | Definire nomi, subnet, gateway e percorso dei pacchetti | COMPLETATO |
 | 3 | [`steps/03-hotspot-realtek.md`](steps/03-hotspot-realtek.md) | Creare un hotspot stabile sulla Realtek USB | COMPLETATO |
 | 4 | [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md) | Verificare DHCP, DNS, forwarding, NAT e sicurezza Wi-Fi | COMPLETATO |
-| 5 | [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md) | Applicare regole stateful e un rollback sicuro | PROSSIMO |
-| 6 | [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md) | Approfondire cattura, filtri e salvataggio revisionato | DA FARE |
+| 5 | [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md) | Applicare regole stateful, logging, rollback e persistenza sicura | COMPLETATO |
+| 6 | [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md) | Approfondire cattura, filtri e salvataggio revisionato | PROSSIMO |
 | 7 | [`steps/07-suricata.md`](steps/07-suricata.md) | Produrre e verificare avvisi IDS | DA FARE |
 | 8 | [`steps/08-zeek.md`](steps/08-zeek.md) | Generare log `conn`, `dns`, `http`, `ssl` e `notice` | DA FARE |
 | 9 | [`steps/09-python-log-analysis.md`](steps/09-python-log-analysis.md) | Leggere i log e produrre statistiche e report | DA FARE |
@@ -58,7 +59,7 @@ Sono stati verificati:
 - interfaccia realmente usata per Internet;
 - gestione NetworkManager;
 - assenza di blocchi `rfkill`;
-- servizi e reti Docker già presenti.
+- servizi e reti Docker esistenti.
 
 ## Fase 2 — Topologia e piano IP
 
@@ -103,15 +104,14 @@ Sono stati verificati:
 - sequenza DHCP completa;
 - `net.ipv4.ip_forward=1`;
 - regole automatiche di forwarding;
-- regola di masquerading per `10.42.0.0/24`;
+- masquerading per `10.42.0.0/24`;
 - contatori NAT non nulli;
 - traffico prima del NAT sulla Realtek;
 - traffico dopo il NAT sulla MediaTek;
-- risoluzione DNS classica;
+- DNS classico;
 - traffico TCP 443 e UDP 443;
 - assenza di percorso cellulare alternativo durante il test;
-- sicurezza Wi-Fi WPA2-RSN con CCMP/AES;
-- eliminazione dell'avviso iOS relativo a TKIP.
+- sicurezza Wi-Fi WPA2-RSN con CCMP/AES.
 
 Percorso dimostrato:
 
@@ -125,45 +125,67 @@ client 10.42.0.x
   -> Internet
 ```
 
-Il NAT traduce indirizzi e, se necessario, porte. Non cifra il traffico.
-
-La cifratura viene fornita da:
-
-- WPA2-RSN/CCMP sul collegamento radio;
-- TLS/HTTPS/QUIC sul collegamento applicativo verso il server.
+Il NAT traduce indirizzi e, se necessario, porte. Non cifra il traffico. La cifratura viene fornita da WPA2-RSN/CCMP sul collegamento radio e da TLS/HTTPS/QUIC a livello applicativo.
 
 ## Fase 5 — Firewall nftables
 
-Prossima fase.
+Completata e verificata il 17 luglio 2026.
 
-Obiettivi:
+Sono stati realizzati e provati:
 
-- salvare lo stato firewall corrente;
-- distinguere regole automatiche di NetworkManager e Docker;
-- creare catene e policy stateful;
-- consentire `established,related`;
-- limitare il forwarding dalla subnet hotspot all'uplink;
-- impedire accessi non previsti alla rete domestica;
-- proteggere il gateway;
-- aggiungere logging con rate limit;
-- predisporre rollback sicuro;
-- verificare DHCP, DNS e Internet dopo ogni modifica.
+- backup del ruleset iniziale;
+- tabella osservativa con soli contatori;
+- filtro `INPUT` limitato all'interfaccia hotspot;
+- filtro `FORWARD` stateful tra hotspot e uplink;
+- DHCP, DNS e ICMP necessari consentiti;
+- mDNS e WS-Discovery bloccati sull'hotspot;
+- accessi non previsti al gateway bloccati;
+- test attivo TCP 631 verso il gateway;
+- test attivo hotspot→rete libvirt;
+- logging con rate limit;
+- rollback e ricaricamento delle sole tabelle del progetto;
+- coesistenza con NetworkManager, Docker e libvirt;
+- script amministrativo con controllo sintattico del batch;
+- servizio systemd dedicato;
+- abilitazione all'avvio;
+- persistenza verificata dopo reboot reale.
 
-Non verrà usato un `flush ruleset` indiscriminato.
+Componenti pubblici revisionati:
+
+```text
+configs/nftables/security-gateway-input-filter.nft
+configs/nftables/security-gateway-filter.nft
+configs/systemd/security-gateway-firewall.service
+scripts/security-gateway-firewall
+samples/reports/phase-05-firewall-nftables-final.md
+```
+
+Il servizio standard `nftables.service` resta disabilitato perché la configurazione standard contiene `flush ruleset`. Il servizio dedicato modifica soltanto le tabelle:
+
+```text
+security_gateway_input_filter
+security_gateway_filter
+```
+
+Limiti dichiarati:
+
+- non è stata generata attivamente una nuova connessione da un secondo host dell'uplink verso un client;
+- non è stato costruito appositamente un pacchetto `ct state invalid`.
 
 ## Fase 6 — tcpdump
 
-La fase 4 ha già usato `tcpdump` per dimostrare il NAT.
-
-La fase 6 approfondirà:
+La fase 4 ha già usato `tcpdump` per dimostrare il NAT. La fase 6 approfondirà:
 
 - scelta dell'interfaccia;
 - filtri BPF;
 - DNS, TCP, TLS e QUIC;
-- salvataggio `.pcap` limitato;
+- catture su hotspot, uplink e bridge virtuali;
+- salvataggio `.pcap` limitato per durata e dimensione;
+- permessi dei file;
 - anonimizzazione;
 - confronto temporale tra lati hotspot e uplink;
-- rischi di privacy.
+- rischi di privacy;
+- produzione di sample sicuri per Suricata, Zeek e Python.
 
 ## Fase 7 — Suricata
 
@@ -221,10 +243,10 @@ Nessun container privilegiato senza necessità dimostrata.
 
 Verifiche finali:
 
-- riavvio;
-- persistenza;
 - uplink assente;
 - isolamento tra client;
+- test attivo da un secondo host dell'uplink;
+- generazione controllata di casi `invalid` in un ambiente autorizzato;
 - accessi consentiti tra reti;
 - IDS fermo;
 - spazio e rotazione log;
