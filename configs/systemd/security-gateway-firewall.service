@@ -1,0 +1,37 @@
+[Unit]
+Description=Security Gateway nftables filters
+Documentation=man:nft(8)
+
+# NetworkManager deve essere stato inizializzato prima del caricamento.
+# Le regole iifname/oifname possono essere presenti anche se il profilo
+# hotspot non è ancora attivo.
+Wants=NetworkManager.service
+After=NetworkManager.service
+
+# Il servizio parte soltanto se esistono entrambe le configurazioni.
+ConditionPathExists=/etc/security-gateway-firewall/security-gateway-input-filter.nft
+ConditionPathExists=/etc/security-gateway-firewall/security-gateway-filter.nft
+
+[Service]
+# Esegue il caricatore una volta e poi termina.
+Type=oneshot
+
+# Mantiene lo stato active (exited) dopo il caricamento riuscito.
+RemainAfterExit=yes
+
+# Carica o sostituisce soltanto le tabelle del laboratorio.
+ExecStart=/usr/local/sbin/security-gateway-firewall load
+
+# Ricarica le due tabelle con un batch controllato.
+ExecReload=/usr/local/sbin/security-gateway-firewall reload
+
+# Quando il servizio viene fermato rimuove soltanto le due tabelle.
+# Non esegue alcun flush globale del ruleset.
+ExecStop=/usr/local/sbin/security-gateway-firewall unload
+
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+# Permette l'avvio automatico nel normale target multiutente.
+WantedBy=multi-user.target
