@@ -1,73 +1,179 @@
-# Obiettivi e architettura del progetto
+# Obiettivi e identità del progetto
 
-## 1. Scopo
+## 1. Idea centrale
 
-Questo progetto serve a costruire, studiare e documentare un **gateway di sicurezza Linux su Ubuntu**. Il gateway è il punto attraverso cui passa il traffico dei dispositivi di laboratorio prima di raggiungere Internet.
+Questo progetto è un percorso pratico per **imparare sicurezza informatica, networking Linux, Python e Docker costruendo un vero gateway di laboratorio su Ubuntu**.
 
-Le finalità sono collegate:
+L’obiettivo non è assemblare strumenti senza comprenderli e non è creare rapidamente un prodotto da mettere in produzione. Ogni componente viene introdotto soltanto dopo aver studiato:
 
-1. imparare networking Linux applicato alla sicurezza;
-2. comprendere hotspot, DHCP, routing, forwarding, NAT e firewall;
-3. osservare il traffico con strumenti difensivi;
-4. imparare Python sviluppando programmi che leggono log e stato della rete;
-5. usare Docker per database e dashboard senza affidargli il routing principale.
+- quale problema risolve;
+- dove agisce nel percorso dei pacchetti;
+- quali comandi lo controllano;
+- quali dati produce;
+- quali rischi introduce;
+- come verificarlo;
+- come rimuoverlo senza danneggiare il resto del sistema.
 
-L'intero percorso operativo è basato sul **gateway fisico Ubuntu**, collegato a dispositivi reali autorizzati attraverso l'hotspot Wi-Fi del laboratorio.
-
-Lo stato realmente verificato è registrato in [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md) e nelle guide numerate della cartella [`steps`](steps).
+Il risultato finale deve essere un laboratorio che funzioni realmente e, soprattutto, che possa essere **spiegato, verificato, rotto in modo controllato e ricostruito**.
 
 ---
 
-## 2. Problema affrontato
+## 2. Obiettivo principale
 
-Un dispositivo collegato normalmente alla rete domestica invia il proprio traffico direttamente al router. In questa situazione Ubuntu non è il punto obbligatorio del percorso e non può applicare in modo completo regole, contatori e monitoraggio.
+Trasformare un computer Ubuntu fisico in un gateway di sicurezza attraverso cui far passare il traffico di dispositivi di test autorizzati.
 
-Il progetto crea invece una rete separata:
+Il gateway deve permettere di studiare direttamente:
 
 ```text
-Client autorizzato
+client di laboratorio
         |
-        | gateway predefinito
+        | Wi-Fi
         v
-Ubuntu Security Gateway
+Ubuntu gateway
         |
-        | routing, firewall e NAT
+        | routing, firewall, NAT e monitoraggio
         v
-Router domestico
-        |
-        v
-Internet
+uplink Internet
 ```
 
-Ubuntu dovrà poter decidere:
-
-- quali pacchetti inoltrare;
-- quali pacchetti bloccare;
-- quali connessioni contare;
-- quali eventi registrare;
-- quali dati fornire agli strumenti Python;
-- quali servizi applicativi eseguire tramite Docker.
+Ubuntu diventa quindi il punto in cui osservare e controllare il traffico, invece di lasciare che il dispositivo comunichi direttamente con il router domestico.
 
 ---
 
-## 3. Architettura fisica principale
+## 3. Cosa si vuole imparare davvero
 
-L'ambiente operativo principale usa due schede Wi-Fi con ruoli distinti:
+### 3.1 Linux e networking
+
+Comprendere con prove reali:
+
+- interfacce fisiche e virtuali;
+- indirizzi IPv4 e subnet CIDR;
+- gateway e tabelle di routing;
+- DHCP e DNS locale;
+- forwarding del kernel;
+- NAT e masquerading;
+- connection tracking;
+- differenza tra traffico `INPUT`, `OUTPUT` e `FORWARD`;
+- convivenza tra NetworkManager, nftables, Docker e libvirt.
+
+### 3.2 Sicurezza difensiva
+
+Imparare a:
+
+- progettare un firewall stateful;
+- consentire soltanto i flussi necessari;
+- osservare i contatori prima di applicare blocchi;
+- distinguere un problema Wi-Fi, DHCP, routing, NAT o firewall;
+- catturare traffico in modo mirato;
+- interpretare metadati senza tentare di decifrare comunicazioni private;
+- produrre log utili per diagnosi e investigazione;
+- preparare sempre un rollback sicuro.
+
+### 3.3 Python
+
+Python non viene usato come scorciatoia per nascondere i comandi Linux.
+
+Viene introdotto dopo aver capito manualmente i dati che dovrà elaborare. Gli script serviranno a:
+
+- leggere output e log reali;
+- analizzare JSON, CSV e file testuali;
+- contare eventi, connessioni, indirizzi e porte;
+- controllare lo stato del gateway;
+- segnalare configurazioni incoerenti;
+- produrre report tecnici;
+- confrontare misurazioni eseguite in momenti differenti.
+
+Ogni programma deve spiegare:
+
+- librerie importate;
+- variabili e tipi di dato;
+- cicli e condizioni;
+- funzioni;
+- lettura e scrittura dei file;
+- gestione degli errori;
+- significato dei dati di rete elaborati.
+
+### 3.4 Docker
+
+Docker viene usato per i servizi applicativi del progetto, non per sostituire il gateway Linux.
+
+I container potranno ospitare:
+
+- importazione dei dati;
+- database;
+- API;
+- dashboard;
+- servizi Python.
+
+Il routing principale, il firewall e l’osservazione delle interfacce restano responsabilità dell’host Ubuntu.
+
+---
+
+## 4. Metodo di lavoro
+
+Ogni fase deve seguire lo stesso ciclo:
 
 ```text
-Telefono / portatile / dispositivo autorizzato
+osservare
+    -> capire
+    -> documentare
+    -> fare backup
+    -> modificare poco
+    -> verificare
+    -> provare il rollback
+    -> registrare il risultato reale
+```
+
+Non vengono considerate completate attività che esistono soltanto nella documentazione.
+
+Una fase è completata quando:
+
+1. il comando è stato eseguito sul laboratorio reale;
+2. l’output è stato interpretato;
+3. il risultato atteso è stato confrontato con quello osservato;
+4. gli effetti collaterali sono stati controllati;
+5. il rollback è noto e, quando necessario, verificato;
+6. i dati pubblici sono stati anonimizzati.
+
+---
+
+## 5. Risultati concreti da produrre
+
+Il progetto deve generare materiale utile anche per lo studio futuro:
+
+- guide operative numerate;
+- spiegazioni dettagliate dei comandi e dei flag;
+- report tecnici privati completi;
+- esempi pubblici anonimizzati;
+- configurazioni versionate;
+- backup verificati;
+- script Python commentati;
+- dati di test piccoli e controllabili;
+- procedure di diagnosi;
+- procedure di rollback e ripristino.
+
+Il repository non deve essere soltanto una raccolta di configurazioni. Deve mostrare **come si è arrivati a ogni scelta**.
+
+---
+
+## 6. Architettura del laboratorio
+
+L’architettura principale usa due schede Wi-Fi con ruoli separati:
+
+```text
+Telefono, portatile o dispositivo autorizzato
                     |
-                    | SSID SecurityGatewayLab
+                    | hotspot SecurityGatewayLab
                     | rete 10.42.0.0/24
                     v
-Realtek RTL8812AU USB
+Realtek USB
 modalità Access Point
                     |
                     | gateway 10.42.0.1
                     v
 Ubuntu gateway fisico
-|-- NetworkManager: profilo hotspot
-|-- DHCP e inoltro DNS iniziali
+|-- NetworkManager
+|-- DHCP e DNS locale iniziali
 |-- routing IPv4
 |-- NAT / masquerading
 |-- nftables
@@ -75,20 +181,20 @@ Ubuntu gateway fisico
 |-- Suricata
 |-- Zeek
 |-- Python
-`-- Docker per servizi applicativi
+`-- Docker per database e dashboard
                     |
                     v
-MediaTek MT7922 interna
+MediaTek interna
 uplink wlp13s0
                     |
                     v
-Router domestico
+Router locale
                     |
                     v
 Internet
 ```
 
-Ruoli verificati:
+Valori pubblicabili:
 
 ```text
 UPLINK_IF=wlp13s0
@@ -97,212 +203,117 @@ HOTSPOT_PROFILE=security-gateway-ap
 LAB_SUBNET=10.42.0.0/24
 GATEWAY_IP=10.42.0.1
 LAB_SSID=SecurityGatewayLab
-WIFI_BAND=2.4GHz
-WIFI_CHANNEL=6
 ```
 
-Il nome completo della Realtek, gli indirizzi MAC, gli IP completi non necessari e i segreti restano nei report locali ignorati da Git.
+Nomi completi che incorporano MAC, indirizzi MAC, password e dettagli locali restano nei report privati.
 
 ---
 
-## 4. Stato già raggiunto sul gateway fisico
+## 7. Stato raggiunto
 
-Sono già stati verificati:
+Sono già stati verificati sul gateway fisico:
 
-- inventario hardware e driver;
-- ruolo della MediaTek come uplink Internet;
-- supporto AP della Realtek USB;
-- assenza di conflitti per la subnet `10.42.0.0/24`;
-- creazione del profilo `security-gateway-ap`;
-- modalità AP sulla Realtek;
-- SSID WPA-PSK sulla banda 2,4 GHz, canale 6;
-- assegnazione di `10.42.0.1/24` al gateway;
-- associazione e autenticazione di client reali;
+- identificazione delle interfacce e dei driver;
+- scelta della subnet del laboratorio;
+- creazione dell’hotspot sulla Realtek;
+- associazione di client reali;
 - assegnazione di indirizzi `10.42.0.x`;
-- raggiungibilità del gateway da un client con risposta HTTP `200`;
-- navigazione Internet tramite la condivisione IPv4 di NetworkManager;
-- arresto e riattivazione dell'hotspot;
-- eliminazione e ricreazione completa del profilo;
-- comportamento dopo riavvio con `connection.autoconnect=no`.
-
-La navigazione funziona già empiricamente tramite `ipv4.method=shared`; DHCP, DNS, forwarding e NAT devono però essere osservati e documentati nel dettaglio nella fase successiva.
-
----
-
-## 5. Livelli del sistema finale
-
-### 5.1 Livello di rete
-
-Ubuntu dovrà svolgere le funzioni di:
-
-- router IPv4;
-- gateway della rete hotspot;
-- firewall stateful;
-- NAT tramite masquerading;
-- punto di monitoraggio;
-- sorgente di log e contatori.
-
-### 5.2 Livello di osservazione
-
-Verranno usati:
-
-- `ip` e `ss` per stato e diagnostica;
-- `nft` per firewall, contatori e NAT;
-- `conntrack` per lo stato delle connessioni;
-- `tcpdump` per catture mirate;
-- Suricata per eventi IDS;
-- Zeek per log di connessione, DNS, HTTP e TLS.
-
-### 5.3 Livello Python
-
-Python verrà usato per:
-
-- eseguire controlli diagnostici senza modificare la rete;
-- leggere output strutturati e log;
-- raccogliere contatori;
-- produrre JSON e CSV;
-- generare report leggibili;
-- rilevare configurazioni incoerenti;
-- confrontare lo stato della rete nel tempo.
-
-Ogni script dovrà includere import spiegati, funzioni piccole, commenti didattici, gestione degli errori e dati di esempio anonimizzati.
-
-### 5.4 Livello Docker
-
-Docker verrà usato in seguito per:
-
-- database;
-- dashboard;
-- applicazioni Python;
-- raccolta e visualizzazione delle metriche.
-
-Il routing principale rimane nel sistema operativo Ubuntu. I container non devono ricevere privilegi di rete elevati senza una necessità dimostrata.
-
----
-
-## 6. Concetti da imparare
-
-Il progetto deve permettere di comprendere:
-
-- interfacce di rete fisiche;
-- link, indirizzi MAC e IPv4;
-- subnet e notazione CIDR;
-- DHCP e configurazione statica;
-- gateway e tabella di routing;
-- metriche delle rotte;
-- bridge e reti Docker;
-- forwarding del kernel;
-- firewall stateful;
-- connection tracking;
+- raggiungibilità di Ubuntu dal client;
+- DHCP e DNS tramite `dnsmasq`;
+- forwarding IPv4;
 - NAT e masquerading;
-- DNS e diagnostica a strati;
-- access point Wi-Fi;
-- cattura e analisi difensiva del traffico;
-- lettura di log con Python;
-- produzione di report tecnici.
+- traffico osservato prima e dopo il NAT;
+- sicurezza Wi-Fi WPA2-RSN con CCMP;
+- filtro nftables `FORWARD` stateful;
+- contatori nftables con traffico reale;
+- rollback e ricaricamento del filtro;
+- convivenza con le regole di NetworkManager, Docker e libvirt.
+
+Restano da completare nella fase firewall:
+
+- filtro del traffico diretto a Ubuntu tramite `INPUT`;
+- prove controllate delle regole di blocco;
+- logging con rate limit;
+- persistenza dopo riavvio.
+
+Dopo il firewall verranno introdotti gradualmente cattura strutturata, IDS, log di rete, analisi Python e dashboard.
 
 ---
 
-## 7. Funzioni principali
+## 8. Cosa il progetto non vuole essere
 
-### Router
+Il progetto non ha lo scopo di:
 
-Collega reti IP differenti e sceglie dove inoltrare un pacchetto.
+- intercettare password o contenuti privati;
+- monitorare dispositivi senza autorizzazione;
+- attaccare sistemi esterni;
+- creare un access point pubblico;
+- trasformare immediatamente il computer in un appliance di produzione;
+- copiare configurazioni trovate online senza comprenderle;
+- concedere privilegi elevati ai container senza necessità;
+- sostituire lo studio con script automatici non spiegati.
 
-### Gateway
-
-È il punto di uscita usato dai client. In questo progetto il gateway è il sistema Ubuntu fisico.
-
-### Bridge
-
-Collega interfacce allo stesso livello Ethernet. Non è automaticamente un router e non crea automaticamente NAT.
-
-### Firewall
-
-Permette o blocca traffico in base a interfacce, indirizzi, protocolli, porte e stato delle connessioni.
-
-### NAT
-
-Modifica gli indirizzi dei pacchetti. Il masquerading permette ai client della rete interna di condividere l'indirizzo dell'interfaccia uplink.
-
-### Hotspot
-
-Fornisce il collegamento radio ai client. Non va confuso con routing, DHCP, firewall o NAT, anche se NetworkManager può configurare automaticamente alcune di queste funzioni con `ipv4.method=shared`.
-
-### Proxy
-
-Intermedia protocolli applicativi specifici. Non sostituisce il routing generale della rete.
+Le prove vengono eseguite soltanto su dispositivi, reti e servizi propri o esplicitamente autorizzati.
 
 ---
 
-## 8. Informazioni osservabili
+## 9. Criteri di completamento
 
-Senza decifrare HTTPS, il gateway può normalmente osservare:
+Il progetto è considerato completo quando è possibile dimostrare e spiegare l’intero percorso:
 
-- IP sorgente e destinazione;
-- protocollo;
-- porte TCP e UDP;
-- numero di pacchetti e byte;
-- durata delle connessioni;
-- errori e pacchetti scartati;
-- DNS tradizionale non cifrato;
-- frequenza e direzione delle connessioni.
+```text
+client autorizzato
+    -> associazione Wi-Fi
+    -> DHCP e DNS
+    -> gateway Ubuntu
+    -> firewall stateful
+    -> routing e NAT
+    -> Internet
+    -> cattura e monitoraggio
+    -> log Suricata e Zeek
+    -> analisi Python
+    -> database e dashboard
+```
 
-Il contenuto HTTPS resta cifrato. Il progetto non ha lo scopo di intercettare credenziali o comunicazioni altrui.
+In particolare devono essere verificati:
+
+1. connessione stabile del client all’hotspot;
+2. configurazione IP corretta;
+3. accesso controllato al gateway;
+4. navigazione tramite l’uplink previsto;
+5. blocco dei flussi non consentiti;
+6. raccolta di catture brevi e mirate;
+7. produzione di log IDS e di rete;
+8. analisi dei log con programmi Python spiegati;
+9. visualizzazione dei risultati tramite servizi Docker;
+10. riavvio, backup, ripristino e smontaggio del laboratorio.
+
+Il completamento non richiede soltanto che “funzioni”: richiede che ogni livello sia comprensibile e ripetibile.
 
 ---
 
-## 9. Criteri di completamento del progetto fisico
+## 10. Sicurezza, privacy e pubblicazione
 
-Il progetto sarà completato quando un dispositivo autorizzato:
+Nel repository pubblico non devono comparire:
 
-1. si collega stabilmente all'hotspot Realtek;
-2. riceve una configurazione IP corretta;
-3. usa Ubuntu come gateway;
-4. raggiunge Internet tramite la MediaTek;
-5. è filtrato da un ruleset `nftables` verificato;
-6. genera traffico osservabile con `tcpdump`;
-7. produce eventi e log utili in Suricata e Zeek;
-8. compare nei report Python;
-9. compare nella dashboard Docker;
-10. continua a funzionare dopo test di riavvio, backup e ripristino.
-
-I primi quattro punti sono già stati osservati; le guide numerate documentano lo stato preciso delle fasi.
-
----
-
-## 10. Regole di sicurezza e privacy
-
-Il progetto deve essere usato soltanto su:
-
-- sistemi propri;
-- reti di laboratorio;
-- dispositivi autorizzati;
-- ambienti per i quali esiste consenso esplicito.
-
-Nel repository pubblico non devono essere inseriti:
-
-- password;
-- token;
-- chiavi private;
-- file `.env` reali;
+- password o chiavi;
+- token e file `.env` reali;
 - SSID domestici;
-- nomi di interfaccia che incorporano MAC quando non necessari;
 - indirizzi MAC reali non necessari;
-- log e PCAP non revisionati;
-- dati personali;
-- contenuti di traffico appartenenti a terzi.
+- nomi completi di interfacce che incorporano MAC;
+- hostname e percorsi personali non necessari;
+- log completi non revisionati;
+- file PCAP reali;
+- dati personali o traffico appartenente a terzi.
 
-I dati completi devono restare nella cartella locale `reports/`, esclusa tramite `.gitignore`.
+I dati completi restano nei report locali esclusi da Git.
 
 ---
 
-## 11. Documentazione autorevole
+## 11. Documenti di riferimento
 
-Per evitare incoerenze:
-
-1. [`00-ROADMAP.md`](00-ROADMAP.md) definisce l'ordine delle fasi;
-2. [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md) descrive lo stato verificato;
-3. [`steps/`](steps) contiene comandi, test e rollback delle singole fasi;
-4. questo documento descrive obiettivi e architettura generale;
-5. [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md) riassume la cronologia del lavoro e i prossimi passi del gateway fisico.
+- [`00-ROADMAP.md`](00-ROADMAP.md): ordine delle fasi;
+- [`01-METODO-DI-LAVORO.md`](01-METODO-DI-LAVORO.md): regole operative e documentali;
+- [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md): stato realmente verificato;
+- [`steps/`](steps): comandi, prove e rollback di ogni fase;
+- [`LAVORO_SVOLTO_E_PROSSIMI_PASSI.md`](LAVORO_SVOLTO_E_PROSSIMI_PASSI.md): cronologia e punto di ripresa.
