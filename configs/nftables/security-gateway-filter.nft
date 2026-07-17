@@ -1,0 +1,94 @@
+#!/usr/sbin/nft -f
+
+# Filtro FORWARD verificato sul gateway fisico il 17 luglio 2026.
+#
+# Prima dell'uso sostituire AP_IF con il nome reale dell'interfaccia
+# hotspot e verificare UPLINK_IF tramite la route predefinita.
+#
+# Controllo consigliato:
+#   sudo nft --check --file security-gateway-filter.nft
+
+# Interfaccia usata dall'hotspot.
+define AP_IF = "wlx<REPLACE_ME>"
+
+# Interfaccia usata per raggiungere Internet.
+define UPLINK_IF = "wlp13s0"
+
+# Rete IPv4 dei client autorizzati.
+define LAB_SUBNET = 10.42.0.0/24
+
+
+table inet security_gateway_filter {
+    chain forward_filter {
+        # Questa base chain vede pacchetti che Ubuntu deve inoltrare.
+        # La policy resta accept per non modificare traffico non
+        # collegato all'interfaccia hotspot.
+        type filter hook forward priority -20; policy accept;
+
+        # Pacchetti invalidi dal laboratorio verso l'uplink.
+        iifname $AP_IF \
+            oifname $UPLINK_IF \
+            ct state invalid \
+            counter drop
+
+        # Pacchetti invalidi dall'uplink verso il laboratorio.
+        iifname $UPLINK_IF \
+            oifname $AP_IF \
+            ct state invalid \
+            counter drop
+
+        # Consente connessioni valide iniziate dai client del laboratorio
+        # verso l'uplink autorizzato.
+        iifname $AP_IF \
+            oifname $UPLINK_IF \
+            ip saddr $LAB_SUBNET \
+            ct state new,established,related \
+            counter accept
+
+        # Consente verso i client soltanto risposte appartenenti
+        # a connessioni già esistenti o correlate.
+        iifname $UPLINK_IF \
+            oifname $AP_IF \
+            ip daddr $LAB_SUBNET \
+            ct state established,related \
+            counter accept
+
+        # Registra nuove connessioni inoltrate dall'uplink verso l'AP.
+        # Il pacchetto prosegue verso il drop successivo.
+        iifname $UPLINK_IF \
+            oifname $AP_IF \
+            ct state new \
+            limit rate 5/minute burst 10 packets \
+            counter \
+            log prefix "SGW_FWD_TO_AP_DROP " level info
+
+        # Blocca nuove connessioni dall'uplink verso i client.
+        iifname $UPLINK_IF \
+            oifname $AP_IF \
+            ct state new \
+            counter drop
+
+        # Registra traffico proveniente dall'hotspot che non ha usato
+        # l'uplink autorizzato. Può includere tentativi verso bridge
+        # Docker, libvirt o altre reti locali.
+        iifname $AP_IF \
+            limit rate 5/minute burst 10 packets \
+            counter \
+            log prefix "SGW_FWD_FROM_AP_DROP " level info
+
+        # Blocca ogni altro inoltro proveniente dall'hotspot.
+        iifname $AP_IF \
+            counter drop
+
+        # Registra altro traffico inoltrato verso l'hotspot che non
+        # appartiene alle connessioni autorizzate precedenti.
+        oifname $AP_IF \
+            limit rate 5/minute burst 10 packets \
+            counter \
+            log prefix "SGW_FWD_TO_AP_DROP " level info
+
+        # Blocca ogni altro inoltro diretto all'hotspot.
+        oifname $AP_IF \
+            counter drop
+    }
+}
