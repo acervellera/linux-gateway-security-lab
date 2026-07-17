@@ -28,7 +28,8 @@ Ogni guida:
 - contiene comandi realmente eseguiti;
 - spiega opzioni e modifiche prodotte;
 - include verifiche e rollback;
-- viene segnata `COMPLETATA` solo dopo una prova reale.
+- viene segnata `COMPLETATA` solo dopo una prova reale;
+- dichiara esplicitamente gli eventuali casi non generati attivamente.
 
 Stato sintetico corrente:
 
@@ -37,8 +38,13 @@ Fase 1  inventario hardware e rete      COMPLETATA
 Fase 2  topologia e indirizzamento      COMPLETATA
 Fase 3  hotspot Realtek                 COMPLETATA
 Fase 4  DHCP, routing e NAT             COMPLETATA
-Fase 5  firewall nftables               PROSSIMA
+Fase 5  firewall nftables               COMPLETATA
+Fase 6  cattura tcpdump                 PROSSIMA
 ```
+
+La guida completa della fase firewall è:
+
+- [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md).
 
 ## Architettura sintetica
 
@@ -46,11 +52,23 @@ Fase 5  firewall nftables               PROSSIMA
 Client autorizzato
   -> Realtek USB AP
   -> Ubuntu gateway
+  -> nftables INPUT/FORWARD
   -> MediaTek uplink
   -> Internet
 ```
 
-È il percorso seguito da tutte le guide numerate.
+Il firewall della fase 5 viene caricato automaticamente tramite un servizio systemd dedicato. Il servizio standard `nftables.service` resta disabilitato per non applicare un `flush ruleset` globale alle regole dinamiche di NetworkManager, Docker e libvirt.
+
+## Configurazioni e script verificati
+
+```text
+../configs/nftables/security-gateway-input-filter.nft
+../configs/nftables/security-gateway-filter.nft
+../configs/systemd/security-gateway-firewall.service
+../scripts/security-gateway-firewall
+```
+
+I file nftables pubblici sono revisionati e contengono un placeholder per il nome dell'interfaccia hotspot. Devono essere adattati e controllati con `nft --check` prima dell'uso.
 
 ## Sample pubblici
 
@@ -66,7 +84,12 @@ Per la fase 4 sono disponibili:
 - [`../samples/04-dhcp-routing-nat-report.md`](../samples/04-dhcp-routing-nat-report.md);
 - [`../samples/04-dhcp-routing-nat-output.md`](../samples/04-dhcp-routing-nat-output.md).
 
-Le regole dettagliate sono in [`../samples/README.md`](../samples/README.md).
+Per la fase 5 sono disponibili:
+
+- [`../samples/reports/phase-05-firewall-nftables-final.md`](../samples/reports/phase-05-firewall-nftables-final.md);
+- [`../samples/reports/phase-05-forward-filter-checkpoint.md`](../samples/reports/phase-05-forward-filter-checkpoint.md), conservato come checkpoint storico.
+
+Le regole dettagliate sui sample sono in [`../samples/README.md`](../samples/README.md).
 
 ## Report privati
 
@@ -92,4 +115,5 @@ Dopo ogni sessione aggiornare almeno:
 2. `02-STATO-ATTUALE.md`;
 3. eventuali configurazioni o script realmente verificati;
 4. la roadmap se cambia ordine o ambito;
-5. `OBIETTIVI_E_PROGETTO.md` soltanto quando cambia l'architettura generale.
+5. i sample pubblici dopo anonimizzazione;
+6. `OBIETTIVI_E_PROGETTO.md` soltanto quando cambia l'architettura generale.
