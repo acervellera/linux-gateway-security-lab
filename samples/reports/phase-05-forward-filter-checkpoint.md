@@ -1,16 +1,28 @@
-# Fase 5 — Checkpoint filtro FORWARD nftables
+# Fase 5 — Checkpoint storico filtro FORWARD nftables
 
-Data verifica: 16 luglio 2026.
+Data del checkpoint: 16 luglio 2026.
 
 ## Stato
 
 ```text
-CHECKPOINT VERIFICATO — FILTRO FORWARD ATTIVO, INPUT NON ANCORA IMPLEMENTATO
+CHECKPOINT STORICO — SUPERATO DAL REPORT FINALE DEL 17 LUGLIO 2026
 ```
 
-Questo checkpoint documenta la parte completata della fase 5 senza pubblicare nomi completi delle interfacce, indirizzi MAC o output locali completi.
+Questo documento conserva il punto intermedio nel quale era stato verificato soltanto il filtro `FORWARD`. La fase 5 è stata successivamente completata con:
 
-## Ambiente pubblico
+- filtro `INPUT`;
+- test attivi dei blocchi verso il gateway e la rete libvirt;
+- logging con rate limit;
+- script di caricamento;
+- servizio systemd dedicato;
+- persistenza dopo reboot.
+
+Usare come riferimento aggiornato:
+
+- [`../../docs/steps/05-firewall-nftables.md`](../../docs/steps/05-firewall-nftables.md);
+- [`phase-05-firewall-nftables-final.md`](phase-05-firewall-nftables-final.md).
+
+## Ambiente pubblico del checkpoint
 
 ```text
 AP_IF=wlx<REDACTED>
@@ -20,25 +32,9 @@ GATEWAY_IP=10.42.0.1
 CLIENT_IP=10.42.0.x
 ```
 
-Il gateway usa regole dinamiche create da NetworkManager, Docker e libvirt. Il servizio `nftables.service` resta disabilitato durante i test e non è stato eseguito `nft flush ruleset`.
+Il gateway usava già regole dinamiche create da NetworkManager, Docker e libvirt. Il servizio standard `nftables.service` era disabilitato e non è mai stato eseguito `nft flush ruleset`.
 
-## Tabelle del progetto
-
-```text
-table inet security_gateway
-    osservazione con soli counter
-    hook input e forward
-    priority -10
-    policy accept
-
-table inet security_gateway_filter
-    filtro reale del traffico inoltrato
-    hook forward
-    priority -20
-    policy accept
-```
-
-## Politica FORWARD verificata
+## Politica FORWARD già verificata al checkpoint
 
 ```text
 hotspot -> uplink, new/established/related  ACCEPT
@@ -50,51 +46,45 @@ altre interfacce -> hotspot                 DROP
 traffico non collegato all'hotspot          invariato
 ```
 
-Durante traffico reale sono aumentati i contatori delle due regole `accept`. Le regole `drop` non hanno incontrato traffico corrispondente durante la prova e sono rimaste a zero.
+Durante traffico reale erano aumentati i contatori delle due regole `accept`. In quel momento le regole finali di blocco non avevano ancora ricevuto un test attivo.
 
-## Coesistenza con regole dinamiche
+## Coesistenza già verificata
 
-Dopo il caricamento del filtro sono rimaste presenti e operative:
+Dopo il caricamento erano rimaste presenti e operative:
 
 - la chain NetworkManager `nm-sh-fw-<AP_IF>`;
 - la chain `DOCKER-FORWARD`;
-- la chain `LIBVIRT_FWI`;
+- le chain libvirt;
 - DHCP e DNS dell'hotspot;
 - il NAT/masquerading della subnet del laboratorio.
 
-La navigazione del client è proseguita e i contatori NetworkManager hanno continuato ad aumentare.
+## Rollback già verificato
 
-## Rollback verificato
-
-Il filtro reale è stato rimosso esclusivamente con:
+La tabella era stata rimossa esclusivamente con:
 
 ```bash
 sudo nft delete table inet security_gateway_filter
 ```
 
-La tabella è risultata assente, mentre NetworkManager, Docker e libvirt sono rimasti operativi. Il file è stato poi ricontrollato e ricaricato:
+NetworkManager, Docker e libvirt erano rimasti operativi. Il file era stato poi controllato e ricaricato:
 
 ```bash
 sudo nft --check --file "$FILTER_FILE"
 sudo nft --file "$FILTER_FILE"
 ```
 
-Dopo la ricarica i contatori sono ripartiti da zero e hanno ricominciato ad aumentare con traffico reale.
+## Evoluzione successiva
 
-## Risultati verificati
+Il report finale documenta prove ulteriori non ancora presenti in questo checkpoint:
 
-- [x] client verso Internet consentito;
-- [x] risposte Internet verso client consentite tramite connessione esistente;
-- [x] contatori incrementati;
-- [x] rollback e ricaricamento del filtro reale;
-- [x] coesistenza con NetworkManager;
-- [x] presenza delle chain Docker e libvirt;
-- [ ] filtro INPUT del gateway;
-- [ ] test attivo di nuove connessioni uplink verso client;
-- [ ] test controllato di traffico `invalid`;
-- [ ] logging con rate limit;
-- [ ] persistenza dopo riavvio.
+```text
+TCP 631 verso il gateway                LOG + DROP
+hotspot verso 192.168.122.0/24          LOG + DROP
+mDNS dall'hotspot                       DROP
+DHCP e DNS                              ACCEPT
+logging limitato                        verificato
+reload tramite systemd                  verificato
+persistenza dopo reboot                 verificata
+```
 
-## Punto di ripresa
-
-La fase riprenderà con l'inventario delle porte in ascolto e delle connessioni amministrative prima di applicare regole `INPUT` al traffico destinato direttamente a Ubuntu.
+Questo file resta nel repository per mostrare l'evoluzione reale del lavoro e la differenza tra un checkpoint intermedio e una fase completata.
