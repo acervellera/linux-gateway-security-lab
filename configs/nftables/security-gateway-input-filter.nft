@@ -1,0 +1,96 @@
+#!/usr/sbin/nft -f
+
+# Filtro INPUT verificato sul gateway fisico il 17 luglio 2026.
+#
+# Prima dell'uso sostituire il placeholder AP_IF con il nome reale
+# dell'interfaccia hotspot ottenuto tramite NetworkManager o `ip link`.
+# Non pubblicare il nome completo quando incorpora un indirizzo MAC.
+#
+# Controllo consigliato prima del caricamento:
+#   sudo nft --check --file security-gateway-input-filter.nft
+
+# Interfaccia usata dall'hotspot.
+define AP_IF = "wlx<REPLACE_ME>"
+
+# Rete IPv4 dei client autorizzati.
+define LAB_SUBNET = 10.42.0.0/24
+
+# Indirizzo IPv4 del gateway sull'hotspot.
+define GATEWAY_IP = 10.42.0.1
+
+
+table inet security_gateway_input_filter {
+    chain input_filter {
+        # Questa base chain vede soltanto pacchetti destinati
+        # direttamente al gateway Ubuntu.
+        #
+        # La policy resta accept per non modificare traffico
+        # appartenente alle altre interfacce. Il blocco finale
+        # è limitato esplicitamente ad AP_IF.
+        type filter hook input priority -20; policy accept;
+
+        # DHCP client -> server.
+        # Il client usa UDP 68 come porta sorgente e UDP 67
+        # come destinazione. Non imponiamo GATEWAY_IP perché
+        # la richiesta iniziale può essere inviata in broadcast.
+        iifname $AP_IF \
+            udp sport 68 \
+            udp dport 67 \
+            counter accept
+
+        # Scarta pacchetti che conntrack non riesce a collegare
+        # a un flusso valido.
+        iifname $AP_IF \
+            ct state invalid \
+            counter drop
+
+        # Permette risposte legittime a comunicazioni già note.
+        iifname $AP_IF \
+            ct state established,related \
+            counter accept
+
+        # DNS UDP dal laboratorio verso dnsmasq sul gateway.
+        iifname $AP_IF \
+            ip saddr $LAB_SUBNET \
+            ip daddr $GATEWAY_IP \
+            udp dport 53 \
+            counter accept
+
+        # DNS TCP per fallback e risposte grandi.
+        iifname $AP_IF \
+            ip saddr $LAB_SUBNET \
+            ip daddr $GATEWAY_IP \
+            tcp dport 53 \
+            counter accept
+
+        # ICMP IPv4 per ping e diagnostica verso il gateway.
+        iifname $AP_IF \
+            ip saddr $LAB_SUBNET \
+            ip daddr $GATEWAY_IP \
+            ip protocol icmp \
+            counter accept
+
+        # WS-Discovery non necessario per DHCP, DNS o Internet.
+        iifname $AP_IF \
+            udp dport 3702 \
+            counter drop
+
+        # mDNS/Bonjour/Avahi non necessario per il percorso Internet.
+        iifname $AP_IF \
+            udp dport 5353 \
+            counter drop
+
+        # Registra in modo limitato il restante traffico diretto
+        # al gateway. Questa regola non contiene un verdetto:
+        # il pacchetto prosegue verso il drop finale.
+        iifname $AP_IF \
+            limit rate 5/minute burst 10 packets \
+            counter \
+            log prefix "SGW_INPUT_DROP " level info
+
+        # Blocca qualsiasi altro pacchetto arrivato dall'hotspot
+        # e destinato direttamente a Ubuntu.
+        iifname $AP_IF \
+            counter drop
+    }
+}
