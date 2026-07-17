@@ -2,12 +2,9 @@
 
 ## Funzione del documento
 
-Questo file riassume l'evoluzione reale del progetto:
+Questo file riassume l'evoluzione reale del gateway fisico Ubuntu e delle fasi operative verificate.
 
-- gateway fisico Ubuntu;
-- fasi operative verificate.
-
-Per lo stato più aggiornato usare [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md). Per comandi e rollback usare [`steps`](steps).
+Per lo stato più aggiornato usare [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md). Per comandi, spiegazioni e rollback usare i documenti in [`steps`](steps).
 
 ## Gateway fisico
 
@@ -16,6 +13,7 @@ Telefono / dispositivo autorizzato
   -> SecurityGatewayLab
   -> Realtek USB AP
   -> Ubuntu gateway
+  -> filtro INPUT e FORWARD nftables
   -> MediaTek wlp13s0
   -> router
   -> Internet
@@ -65,13 +63,7 @@ Completata il 16 luglio 2026.
 
 ### DHCP e DNS
 
-NetworkManager usa:
-
-```text
-ipv4.method=shared
-```
-
-Sono stati osservati:
+NetworkManager usa `ipv4.method=shared`. Sono stati osservati:
 
 ```text
 dnsmasq su 10.42.0.1:53 TCP/UDP
@@ -110,26 +102,9 @@ Sulla MediaTek:
 192.168.10.x:porta -> server:443
 ```
 
-Le catture sono state eseguite in momenti diversi. Dimostrano i due lati della traduzione, ma non vengono presentate come lo stesso pacchetto abbinato riga per riga.
-
-### DNS e cifratura
-
-È stata osservata una richiesta DNS tradizionale per `time.apple.com`, leggibile sulla porta 53.
-
-Sono stati osservati TCP 443 e UDP 443. Le catture mostravano metadati, non password o contenuto applicativo.
+Le catture dimostrano i due lati della traduzione, ma non vengono presentate come lo stesso pacchetto abbinato riga per riga.
 
 ### Sicurezza Wi-Fi
-
-Configurazione iniziale:
-
-```text
-key-mgmt: wpa-psk
-proto:    --
-pairwise: --
-group:    --
-```
-
-iOS segnalava una configurazione compatibile con TKIP.
 
 Configurazione finale:
 
@@ -140,19 +115,129 @@ pairwise: ccmp
 group:    ccmp
 ```
 
-Dopo la riconnessione l'avviso è scomparso.
+## Fase 5 completata — Firewall nftables
 
-### Percorso verificato
+Completata il 17 luglio 2026.
 
-Con dati cellulari disabilitati:
+### Inventario prima del blocco
+
+Sono state controllate le porte con `ss -lntup`. I servizi rilevanti erano:
 
 ```text
-client
-  -> Realtek
-  -> Ubuntu
-  -> MediaTek
-  -> Internet
+DHCP hotspot       UDP 67
+DNS hotspot        TCP/UDP 53 su 10.42.0.1
+CUPS               TCP 631 solo loopback
+mDNS/Avahi         UDP 5353
+WS-Discovery/wsdd  UDP 3702
 ```
+
+`wsdd` è stato identificato come processo di discovery integrato con GVFS. Non è stato rimosso globalmente: il filtro limita soltanto l'accesso proveniente dall'hotspot.
+
+### Filtro INPUT
+
+Il client può:
+
+- ottenere DHCP;
+- usare il DNS del gateway;
+- usare ICMP verso il gateway;
+- ricevere risposte `established,related`.
+
+Il client non può:
+
+- raggiungere altre porte del gateway;
+- usare mDNS o WS-Discovery verso Ubuntu tramite l'hotspot.
+
+Test attivo:
+
+```text
+client -> 10.42.0.1:631/TCP
+risultato: SGW_INPUT_DROP + DROP
+```
+
+DHCP, DNS e navigazione sono rimasti funzionanti.
+
+### Filtro FORWARD
+
+Politica verificata:
+
+```text
+hotspot -> uplink, new/established/related  ACCEPT
+uplink -> hotspot, established/related      ACCEPT
+uplink -> hotspot, new                      LOG + DROP
+hotspot -> altre interfacce                 LOG + DROP
+altre interfacce -> hotspot                 LOG + DROP
+invalid sul percorso controllato            DROP
+```
+
+Test attivo:
+
+```text
+client 10.42.0.x -> 192.168.122.254:80
+uscita scelta dal kernel: virbr0
+risultato: SGW_FWD_FROM_AP_DROP + DROP
+```
+
+Questo dimostra che il client dell'hotspot non può raggiungere la rete privata libvirt, mentre Internet continua a funzionare sull'uplink autorizzato.
+
+### Logging
+
+Prefissi:
+
+```text
+SGW_INPUT_DROP
+SGW_FWD_FROM_AP_DROP
+SGW_FWD_TO_AP_DROP
+```
+
+Limite:
+
+```text
+5 log/minuto, burst iniziale di 10 pacchetti
+```
+
+Il rate limit limita i messaggi, non il numero di pacchetti bloccati.
+
+### Rollback e coesistenza
+
+Le tabelle del progetto sono state eliminate e ricaricate singolarmente. Sono rimaste presenti:
+
+- chain `nm-sh-*` di NetworkManager;
+- chain `DOCKER-*`;
+- reti e chain libvirt;
+- DHCP, DNS e NAT del profilo condiviso.
+
+Non è mai stato usato `nft flush ruleset`.
+
+### Persistenza
+
+Sono stati installati:
+
+```text
+/etc/security-gateway-firewall/security-gateway-input-filter.nft
+/etc/security-gateway-firewall/security-gateway-filter.nft
+/usr/local/sbin/security-gateway-firewall
+/etc/systemd/system/security-gateway-firewall.service
+```
+
+Lo script supporta `load`, `reload` e `unload`, controlla il batch con `nft --check` e modifica soltanto le due tabelle del progetto.
+
+Il servizio systemd è:
+
+```text
+enabled
+active (exited)
+```
+
+Dopo un riavvio reale sono state ritrovate entrambe le tabelle. Il client ha nuovamente ricevuto DHCP, usato DNS e navigato. Il servizio standard `nftables.service` è rimasto `disabled/inactive`.
+
+### Limiti dichiarati
+
+Non sono stati generati attivamente:
+
+- una nuova connessione da un secondo host dell'uplink verso un client dell'hotspot;
+- un pacchetto `ct state invalid` costruito appositamente.
+
+Le relative regole sono presenti. Pochi pacchetti `invalid` reali sono stati osservati e bloccati.
 
 ## Stato corrente
 
@@ -162,8 +247,8 @@ client
 | 2. Topologia | COMPLETATA |
 | 3. Hotspot | COMPLETATA |
 | 4. DHCP, routing e NAT | COMPLETATA |
-| 5. Firewall nftables | PROSSIMA |
-| 6. tcpdump | DA FARE |
+| 5. Firewall nftables | COMPLETATA |
+| 6. tcpdump | PROSSIMA |
 | 7. Suricata | DA FARE |
 | 8. Zeek | DA FARE |
 | 9. Python | DA FARE |
@@ -172,28 +257,30 @@ client
 
 ## Prossimi passi immediati
 
-La prossima attività è [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md).
+La prossima attività è [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md).
 
 Ordine previsto:
 
-1. salvare il ruleset corrente;
-2. riconoscere le regole gestite da NetworkManager e Docker;
-3. preparare rollback;
-4. applicare policy stateful;
-5. consentire `established,related`;
-6. limitare hotspot → uplink;
-7. proteggere gateway e rete domestica;
-8. verificare DHCP, DNS e Internet;
-9. documentare output reali.
+1. ripassare il percorso dei pacchetti;
+2. studiare la sintassi dei filtri BPF;
+3. catturare separatamente hotspot, uplink e bridge virtuali;
+4. limitare durata e quantità delle catture;
+5. salvare PCAP con permessi appropriati;
+6. riconoscere DNS, TCP, TLS e QUIC;
+7. confrontare metadati prima e dopo NAT;
+8. anonimizzare gli esempi pubblici;
+9. preparare materiale per Suricata, Zeek e Python.
 
 ## Report pubblici e privati
 
 Nel repository pubblico:
 
 - documentazione revisionata;
-- sample anonimizzati;
-- output brevi;
-- immagini ricostruite.
+- configurazioni parametrizzate;
+- script commentato;
+- unità systemd revisionata;
+- report finale anonimizzato;
+- output brevi e immagini ricostruite.
 
 Nella cartella locale `reports/`, ignorata da Git:
 
@@ -201,6 +288,7 @@ Nella cartella locale `reports/`, ignorata da Git:
 - screenshot originali;
 - MAC;
 - nome completo della Realtek;
-- note personali.
+- log del kernel;
+- report personali.
 
 Non pubblicare password, token, PCAP grezzi o traffico di terzi.
