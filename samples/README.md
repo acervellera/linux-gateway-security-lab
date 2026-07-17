@@ -40,7 +40,34 @@ Questi elementi devono restare nella cartella locale `reports/`, ignorata da Git
 03-hotspot-realtek-report.md
 04-dhcp-routing-nat-report.md
 04-dhcp-routing-nat-output.md
+reports/phase-05-forward-filter-checkpoint.md
+reports/phase-05-firewall-nftables-final.md
 ```
+
+Il checkpoint `phase-05-forward-filter-checkpoint.md` è conservato per mostrare lo stato intermedio della fase. Il riferimento aggiornato è `phase-05-firewall-nftables-final.md`.
+
+Il report finale della fase 5 documenta in forma anonimizzata:
+
+- filtro `INPUT`;
+- filtro `FORWARD`;
+- test TCP 631 verso il gateway;
+- test verso la rete privata libvirt;
+- logging con rate limit;
+- rollback e reload;
+- coesistenza con NetworkManager, Docker e libvirt;
+- servizio systemd dedicato;
+- persistenza verificata dopo reboot.
+
+Le configurazioni revisionate e lo script collegato sono pubblicati fuori da `samples/`:
+
+```text
+configs/nftables/security-gateway-input-filter.nft
+configs/nftables/security-gateway-filter.nft
+configs/systemd/security-gateway-firewall.service
+scripts/security-gateway-firewall
+```
+
+## Immagini pubbliche
 
 Il sample della fase 4 include riferimenti a due immagini pubbliche ritagliate:
 
@@ -49,4 +76,4 @@ docs/images/04-wifi-security-before.svg
 docs/images/04-wifi-security-after.svg
 ```
 
-I sample delle fasi successive saranno aggiunti soltanto dopo l'esecuzione, la verifica e l'anonimizzazione dei risultati.
+Le immagini e gli screenshot delle fasi successive vengono aggiunti soltanto dopo revisione e rimozione dei dati locali.
