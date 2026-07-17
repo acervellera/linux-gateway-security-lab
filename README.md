@@ -6,6 +6,7 @@ Laboratorio didattico per costruire un gateway di sicurezza su Ubuntu e imparare
 - hotspot Wi-Fi;
 - DHCP, routing e NAT;
 - firewall con `nftables`;
+- servizi e persistenza con systemd;
 - cattura del traffico con `tcpdump`;
 - rilevamento con Suricata;
 - analisi dei log con Zeek;
@@ -28,7 +29,8 @@ Telefono / portatile / dispositivo autorizzato
               Ubuntu gateway
               |-- hotspot e DHCP iniziale
               |-- routing IPv4 e NAT
-              |-- nftables
+              |-- nftables INPUT/FORWARD
+              |-- servizio systemd dedicato
               |-- tcpdump
               |-- Suricata
               |-- Zeek
@@ -42,7 +44,15 @@ Telefono / portatile / dispositivo autorizzato
                  Internet
 ```
 
-Le prime quattro fasi sono state completate: hardware inventariato, piano IP definito, hotspot reale verificato e percorso DHCP/routing/NAT dimostrato con catture prima e dopo la traduzione. L'hotspot usa WPA2-RSN con CCMP/AES.
+Le prime cinque fasi sono state completate:
+
+1. hardware e rete inventariati;
+2. piano IP definito;
+3. hotspot reale verificato;
+4. DHCP, routing e NAT dimostrati con catture prima e dopo la traduzione;
+5. firewall `nftables` stateful verificato, registrato con rate limit e reso persistente tramite un servizio systemd dedicato.
+
+L'hotspot usa WPA2-RSN con CCMP/AES. Il firewall consente DHCP, DNS e traffico Internet valido, blocca accessi non autorizzati al gateway e impedisce al client dell'hotspot di raggiungere reti private non previste.
 
 ## Metodo di lavoro
 
@@ -59,7 +69,23 @@ Il progetto viene costruito una fase alla volta. Ogni fase deve contenere:
 9. procedura di rollback;
 10. stato finale della fase.
 
-Un passaggio viene segnato come completato soltanto dopo una verifica reale.
+Un passaggio viene segnato come completato soltanto dopo una verifica reale. Gli aspetti non testati attivamente vengono dichiarati esplicitamente.
+
+## Stato sintetico
+
+| Fase | Stato |
+|---:|---|
+| 1. Inventario hardware e rete | COMPLETATA |
+| 2. Topologia e indirizzamento | COMPLETATA |
+| 3. Hotspot Realtek | COMPLETATA |
+| 4. DHCP, routing e NAT | COMPLETATA |
+| 5. Firewall nftables | COMPLETATA |
+| 6. tcpdump | PROSSIMA |
+| 7. Suricata | DA FARE |
+| 8. Zeek | DA FARE |
+| 9. Python | DA FARE |
+| 10. Docker dashboard | DA FARE |
+| 11. Test e hardening | DA FARE |
 
 ## Da dove iniziare
 
@@ -67,6 +93,22 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale.
 2. Controllare lo [stato attuale](docs/02-STATO-ATTUALE.md).
 3. Leggere la [roadmap completa](docs/00-ROADMAP.md).
 4. Seguire i documenti nella cartella [`docs/steps`](docs/steps).
+
+La fase firewall completa è documentata in [`docs/steps/05-firewall-nftables.md`](docs/steps/05-firewall-nftables.md).
+
+## Componenti verificati della fase firewall
+
+```text
+configs/nftables/security-gateway-input-filter.nft
+configs/nftables/security-gateway-filter.nft
+configs/systemd/security-gateway-firewall.service
+scripts/security-gateway-firewall
+samples/reports/phase-05-firewall-nftables-final.md
+```
+
+I file nftables pubblici sono revisionati e usano un placeholder per il nome completo dell'interfaccia hotspot. Non devono essere applicati senza aver sostituito il placeholder e controllato la sintassi.
+
+Il servizio standard `nftables.service` non viene usato nel laboratorio perché la configurazione predefinita contiene `flush ruleset`. Il progetto usa un servizio dedicato che gestisce soltanto le proprie due tabelle e lascia intatte quelle create da NetworkManager, Docker e libvirt.
 
 ## Struttura del repository
 
@@ -96,15 +138,13 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale.
 |       |-- 09-python-log-analysis.md
 |       |-- 10-database-dashboard-docker.md
 |       `-- 11-test-hardening-backup.md
-|-- configs/      configurazioni verificate
-|-- scripts/      script Bash di supporto
+|-- configs/      configurazioni verificate e revisionate
+|-- scripts/      script Bash di supporto commentati
 |-- python/       programmi Python commentati
 |-- docker/       compose, database e dashboard
 |-- samples/      esempi pubblici anonimizzati: report, output e immagini revisionate
 `-- reports/      report privati locali ignorati da Git
 ```
-
-Le directory tecniche vengono riempite soltanto quando la relativa fase è stata eseguita e verificata.
 
 ### Differenza tra `samples/` e `reports/`
 
