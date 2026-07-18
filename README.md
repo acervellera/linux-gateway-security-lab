@@ -17,17 +17,15 @@ Laboratorio didattico per costruire un gateway di sicurezza su Ubuntu e imparare
 
 ## Architettura principale
 
-Il percorso operativo principale è il gateway fisico Ubuntu:
-
 ```text
-Telefono / portatile / dispositivo autorizzato
+Telefono / dispositivo autorizzato
                     |
                     v
         Realtek USB usata come hotspot
                     |
                     v
               Ubuntu gateway
-              |-- hotspot e DHCP iniziale
+              |-- DHCP e DNS locale
               |-- routing IPv4 e NAT
               |-- nftables INPUT/FORWARD
               |-- servizio systemd dedicato
@@ -44,34 +42,18 @@ Telefono / portatile / dispositivo autorizzato
                  Internet
 ```
 
-Le prime cinque fasi sono state completate:
+## Stato verificato
+
+Le prime sei fasi sono completate:
 
 1. hardware e rete inventariati;
 2. piano IP definito;
 3. hotspot reale verificato;
-4. DHCP, routing e NAT dimostrati con catture prima e dopo la traduzione;
-5. firewall `nftables` stateful verificato, registrato con rate limit e reso persistente tramite un servizio systemd dedicato.
+4. DHCP, routing e NAT verificati;
+5. firewall `nftables` stateful reso persistente;
+6. catture tcpdump con DNS, ICMP, handshake TCP, NAT e PCAP controllato verificate.
 
-L'hotspot usa WPA2-RSN con CCMP/AES. Il firewall consente DHCP, DNS e traffico Internet valido, blocca accessi non autorizzati al gateway e impedisce al client dell'hotspot di raggiungere reti private non previste.
-
-## Metodo di lavoro
-
-Il progetto viene costruito una fase alla volta. Ogni fase deve contenere:
-
-1. obiettivo;
-2. teoria necessaria;
-3. prerequisiti;
-4. comandi commentati;
-5. spiegazione di ogni opzione;
-6. risultati realmente osservati;
-7. test di verifica;
-8. problemi incontrati;
-9. procedura di rollback;
-10. stato finale della fase.
-
-Un passaggio viene segnato come completato soltanto dopo una verifica reale. Gli aspetti non testati attivamente vengono dichiarati esplicitamente.
-
-## Stato sintetico
+La fase 7, Suricata, è la prossima attività.
 
 | Fase | Stato |
 |---:|---|
@@ -80,53 +62,101 @@ Un passaggio viene segnato come completato soltanto dopo una verifica reale. Gli
 | 3. Hotspot Realtek | COMPLETATA |
 | 4. DHCP, routing e NAT | COMPLETATA |
 | 5. Firewall nftables | COMPLETATA |
-| 6. tcpdump | PROSSIMA |
-| 7. Suricata | DA FARE |
+| 6. tcpdump | COMPLETATA |
+| 7. Suricata | PROSSIMA |
 | 8. Zeek | DA FARE |
 | 9. Python | DA FARE |
 | 10. Docker dashboard | DA FARE |
 | 11. Test e hardening | DA FARE |
 
+## Risultati della fase 6
+
+Sono stati osservati e documentati:
+
+- traffico del client autorizzato;
+- DNS tradizionale e record `A`, `AAAA`, `CNAME`, `HTTPS`;
+- richieste ICMP;
+- handshake TCP SYN, SYN-ACK e ACK;
+- flag ACK, PSH, FIN e RST;
+- traffico TCP/443 e UDP/443 cifrato;
+- stesso flusso sui lati hotspot e uplink;
+- sostituzione dell’IP tramite NAT;
+- traduzione inversa delle risposte;
+- decremento TTL durante il forwarding;
+- PCAP privato limitato a 20 record e 128 byte per record;
+- lettura del PCAP con AppArmor mantenuto attivo.
+
+## Metodo di lavoro
+
+Ogni fase contiene:
+
+1. obiettivo;
+2. teoria necessaria;
+3. prerequisiti;
+4. comandi commentati;
+5. spiegazione delle opzioni;
+6. risultati realmente osservati;
+7. test di verifica;
+8. problemi incontrati;
+9. rollback;
+10. stato finale.
+
+Una fase viene segnata come completata soltanto dopo una verifica reale. Gli aspetti non testati attivamente vengono dichiarati.
+
 ## Da dove iniziare
 
-1. Leggere [obiettivi e architettura](docs/OBIETTIVI_E_PROGETTO.md).
-2. Controllare lo [stato attuale](docs/02-STATO-ATTUALE.md).
-3. Leggere la [roadmap completa](docs/00-ROADMAP.md).
-4. Seguire i documenti nella cartella [`docs/steps`](docs/steps).
+1. [Obiettivi e architettura](docs/OBIETTIVI_E_PROGETTO.md)
+2. [Stato attuale](docs/02-STATO-ATTUALE.md)
+3. [Roadmap completa](docs/00-ROADMAP.md)
+4. [Indice della documentazione](docs/README.md)
+5. [Guide operative](docs/steps)
 
-Le fasi 4 e 5 sono documentate in:
+Guide più recenti:
 
 - [`docs/steps/04-dhcp-routing-nat.md`](docs/steps/04-dhcp-routing-nat.md);
-- [`docs/steps/05-firewall-nftables.md`](docs/steps/05-firewall-nftables.md).
+- [`docs/steps/05-firewall-nftables.md`](docs/steps/05-firewall-nftables.md);
+- [`docs/steps/06-cattura-tcpdump.md`](docs/steps/06-cattura-tcpdump.md).
 
-## Report pubblici delle fasi 4 e 5
+## Report pubblici
 
-I report pubblici principali sono direttamente nella radice di `samples/`:
+Ogni fase completata possiede un solo report principale nella radice di `samples/`.
 
 ```text
 samples/04-dhcp-routing-nat-report.md
 samples/05-firewall-nftables-report.md
+samples/06-cattura-tcpdump-report.md
 ```
 
-Non viene usata una sottocartella `samples/reports/`.
+Il report della fase 6 consolida DNS, ICMP, handshake TCP, NAT, PCAP e AppArmor. I frammenti duplicati sono stati rimossi.
 
-Il report della fase 4 spiega DHCP, DNS, forwarding, NAT, catture prima e dopo la traduzione e sicurezza WPA2-RSN/CCMP.
+## Report privati
 
-Il report della fase 5 spiega filtri `INPUT` e `FORWARD`, test attivi dei blocchi, logging con rate limit, rollback, script amministrativo, servizio systemd e persistenza dopo reboot.
+`reports/` contiene materiale locale e sensibile ed è esclusa tramite `.gitignore`.
 
-## Componenti verificati della fase firewall
+Report privato previsto per la fase 6:
+
+```text
+reports/06-cattura-tcpdump-private.md
+```
+
+Verifica:
+
+```bash
+git check-ignore -v reports/06-cattura-tcpdump-private.md
+```
+
+Il PCAP grezzo resta in una directory privata esterna al repository e non viene pubblicato.
+
+## Componenti verificati del firewall
 
 ```text
 configs/nftables/security-gateway-input-filter.nft
 configs/nftables/security-gateway-filter.nft
 configs/systemd/security-gateway-firewall.service
 scripts/security-gateway-firewall
-samples/05-firewall-nftables-report.md
 ```
 
-I file nftables pubblici sono revisionati e usano un placeholder per il nome completo dell'interfaccia hotspot. Non devono essere applicati senza aver sostituito il placeholder e controllato la sintassi.
-
-Il servizio standard `nftables.service` non viene usato nel laboratorio perché la configurazione predefinita contiene `flush ruleset`. Il progetto usa un servizio dedicato che gestisce soltanto le proprie due tabelle e lascia intatte quelle create da NetworkManager, Docker e libvirt.
+Il servizio standard `nftables.service` non viene usato perché la configurazione predefinita contiene `flush ruleset`. Il progetto usa un servizio dedicato che gestisce soltanto le proprie tabelle.
 
 ## Struttura del repository
 
@@ -145,68 +175,17 @@ Il servizio standard `nftables.service` non viene usato nel laboratorio perché 
 |   |-- TEMPLATE-FASE.md
 |   |-- images/
 |   `-- steps/
-|       |-- 01-inventario-hardware-rete.md
-|       |-- 02-topologia-e-indirizzamento.md
-|       |-- 03-hotspot-realtek.md
-|       |-- 04-dhcp-routing-nat.md
-|       |-- 05-firewall-nftables.md
-|       |-- 06-cattura-tcpdump.md
-|       |-- 07-suricata.md
-|       |-- 08-zeek.md
-|       |-- 09-python-log-analysis.md
-|       |-- 10-database-dashboard-docker.md
-|       `-- 11-test-hardening-backup.md
-|-- configs/      configurazioni verificate e revisionate
-|-- scripts/      script Bash di supporto commentati
-|-- python/       programmi Python commentati
-|-- docker/       compose, database e dashboard
-|-- samples/      report pubblici e output anonimizzati
-`-- reports/      report privati locali ignorati da Git
+|-- configs/
+|-- scripts/
+|-- python/
+|-- docker/
+|-- samples/
+`-- reports/      privato e ignorato da Git
 ```
-
-### Differenza tra `samples/` e `reports/`
-
-`samples/` contiene materiale sicuro da pubblicare e utile come esempio riproducibile:
-
-- un report principale per ogni fase completata;
-- output brevi con dati sensibili rimossi;
-- screenshot ritagliati o ricostruiti;
-- in futuro, estratti di log revisionati e dati di esempio per gli script Python.
-
-`reports/` contiene invece materiale privato locale:
-
-- output completi;
-- screenshot originali;
-- nomi reali delle interfacce;
-- indirizzi MAC e altri dati locali;
-- report personali non destinati al repository.
-
-La cartella `reports/` è esclusa tramite `.gitignore`.
-
-## Stati usati
-
-- **DA FARE**: attività pianificata ma non iniziata;
-- **IN CORSO**: attività iniziata ma non completamente verificata;
-- **COMPLETATO**: attività eseguita, testata e documentata.
-
-Non inserire configurazioni presentandole come funzionanti prima di averle provate sul gateway.
 
 ## Privacy
 
-Non pubblicare:
-
-- password Wi-Fi;
-- SSID domestici reali;
-- token o chiavi private;
-- file `.env` reali;
-- nomi completi `wlx...` quando incorporano MAC;
-- indirizzi MAC non necessari;
-- catture `.pcap` non revisionate;
-- log contenenti dati personali;
-- traffico appartenente a terzi;
-- screenshot originali non revisionati.
-
-I report completi restano nella cartella locale `reports/`, esclusa tramite `.gitignore`.
+Non pubblicare password Wi-Fi, SSID domestici, token, chiavi, MAC, nomi completi `wlx...`, hostname o percorsi personali, IP e porte completi non necessari, query DNS personali, PCAP grezzi, log integrali o traffico appartenente a terzi.
 
 ## Licenza
 
