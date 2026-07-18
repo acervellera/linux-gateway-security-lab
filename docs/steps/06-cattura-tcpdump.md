@@ -3,87 +3,165 @@
 ## Stato
 
 ```text
-DA FARE
+COMPLETATA E VERIFICATA — 18 luglio 2026
 ```
 
-## Obiettivo
+## Obiettivo raggiunto
 
-Imparare a osservare il traffico che attraversa il gateway e confermare il percorso dei pacchetti sui due lati.
+È stato osservato in modo controllato il traffico del client autorizzato collegato all'hotspot, riconoscendo protocolli, direzioni, handshake TCP, richieste DNS e traduzione NAT sui due lati del gateway.
 
-## Concetti da studiare
+## Concetti verificati
 
-- pacchetto e frame;
-- interfaccia di cattura;
+- pacchetti IPv4 e direzione sorgente/destinazione;
+- interfacce di ingresso e uscita;
 - filtri BPF;
-- differenza tra DNS, TCP, UDP, ICMP e TLS;
+- DNS tradizionale su porta 53;
+- TCP, UDP e ICMP;
+- traffico cifrato TCP/443 e UDP/443;
+- record DNS `A`, `AAAA`, `CNAME` e `HTTPS`;
+- handshake TCP SYN, SYN-ACK e ACK;
+- flag TCP ACK, PSH, FIN e RST;
 - indirizzi prima e dopo il NAT;
+- decremento del TTL durante il forwarding;
 - snapshot length;
 - formato PCAP;
-- limiti di privacy.
+- limiti di privacy;
+- interazione tra `tcpdump` e AppArmor.
 
-## Prime osservazioni
+## Ambiente anonimizzato
 
-```bash
-sudo tcpdump -ni <AP_IF>
-sudo tcpdump -ni <UPLINK_IF>
+```text
+AP_IF=wlx<REDACTED>
+UPLINK_IF=wlp13s0
+LAB_SUBNET=10.42.0.0/24
+GATEWAY_IP=10.42.0.1
+CLIENT_IP=10.42.0.x
+UPLINK_IP=192.168.10.x
 ```
 
-Spiegheremo:
+## Comandi principali verificati
 
-- `-n`: non risolvere nomi;
-- `-i`: scegliere l'interfaccia;
-- perché evitare una cattura senza limiti per troppo tempo.
-
-## Filtri previsti
+### Traffico del client
 
 ```bash
-# Traffico del solo client.
-sudo tcpdump -ni <AP_IF> host <CLIENT_IP>
-
-# DNS tradizionale.
-sudo tcpdump -ni <AP_IF> 'udp port 53 or tcp port 53'
-
-# Handshake TCP e traffico web cifrato.
-sudo tcpdump -ni <AP_IF> 'tcp port 80 or tcp port 443'
-
-# ICMP per i test ping.
-sudo tcpdump -ni <AP_IF> icmp
+sudo tcpdump -ni "$AP_IF" -c 5 "host $CLIENT_IP"
 ```
 
-I comandi definitivi verranno adattati ai valori reali.
+### DNS tradizionale
+
+```bash
+sudo tcpdump \
+    -i "$AP_IF" \
+    -n \
+    -vv \
+    -c 12 \
+    "host $CLIENT_IP and (udp port 53 or tcp port 53)"
+```
+
+Sono state osservate domande e risposte DNS con record `A`, `AAAA`, `CNAME` e `HTTPS`.
+
+### ICMP
+
+```bash
+sudo tcpdump \
+    -i "$AP_IF" \
+    -n \
+    -vv \
+    -c 6 \
+    "icmp and host $CLIENT_IP"
+```
+
+Sono state osservate tre richieste Echo dal gateway verso il client. Il telefono non ha risposto; la cattura ha comunque dimostrato che i pacchetti sono stati trasmessi correttamente sull'interfaccia hotspot.
+
+### Handshake TCP
+
+```bash
+sudo tcpdump \
+    -i "$AP_IF" \
+    -n \
+    -vv \
+    -c 30 \
+    "host $CLIENT_IP and tcp and (port 80 or port 443)"
+```
+
+È stata riconosciuta la sequenza completa:
+
+```text
+client -> server  SYN
+server -> client  SYN-ACK
+client -> server  ACK
+```
+
+Sono stati osservati anche dati cifrati successivi e flag TCP `PSH`, `FIN` e `RST`.
 
 ## Confronto prima e dopo il NAT
 
-Eseguiremo due catture brevi:
+La cattura simultanea su tutte le interfacce ha mostrato lo stesso flusso prima e dopo la traduzione:
 
-1. sulla Realtek, dove la sorgente sarà il client;
-2. sulla MediaTek, dove la sorgente potrà essere l'indirizzo del gateway dopo il masquerading.
-
-Questo test serve a rendere visibile il funzionamento del NAT.
-
-## Salvataggio controllato
-
-```bash
-sudo tcpdump -ni <AP_IF> -c <NUMERO_PACCHETTI> -w <FILE.pcap> <FILTRO>
+```text
+wlx<REDACTED> In  10.42.0.x:PORTA    -> IP_REMOTO:443
+wlp13s0 Out       192.168.10.x:PORTA -> IP_REMOTO:443
 ```
 
-Ogni cattura deve avere:
+Percorso inverso:
 
-- limite di pacchetti o durata;
+```text
+wlp13s0 In        IP_REMOTO:443 -> 192.168.10.x:PORTA
+wlx<REDACTED> Out IP_REMOTO:443 -> 10.42.0.x:PORTA
+```
+
+Il TTL è diminuito di uno durante il forwarding, confermando il passaggio attraverso il gateway.
+
+## PCAP controllato
+
+Il PCAP è stato salvato fuori dal repository con:
+
 - filtro preciso;
-- dispositivo di test noto;
-- revisione prima della conservazione;
-- esclusione dal repository salvo esempio anonimizzato.
+- massimo 20 pacchetti;
+- snapshot length di 128 byte;
+- permessi finali `600`;
+- dimensione di circa 2,8 KiB;
+- nessuna pubblicazione del file grezzo.
+
+A causa del profilo AppArmor attivo, `tcpdump` non poteva creare o aprire direttamente il file nella cartella privata. La cattura e la lettura sono state completate senza disabilitare AppArmor usando standard output e standard input:
+
+```bash
+sudo tcpdump ... -w - | dd of="$PCAP_FILE" status=none
+
+tcpdump -nn -tttt -r - < "$PCAP_FILE"
+```
+
+## Report ed esempi
+
+- `samples/06-cattura-tcpdump-report.md`
+- `samples/06-handshake-tcp-report.md`
+- `samples/06-nat-prima-dopo-report.md`
+- `samples/06-pcap-apparmor-report.md`
 
 ## Test di completamento
 
-- [ ] richiesta DNS osservata;
-- [ ] ping osservato;
-- [ ] handshake TCP osservato;
-- [ ] traffico TLS riconosciuto senza decifrarne il contenuto;
-- [ ] stesso flusso riconosciuto sui due lati;
-- [ ] effetto del NAT compreso;
-- [ ] nessun PCAP sensibile pubblicato.
+- [x] richiesta e risposta DNS osservate;
+- [x] richieste ICMP osservate;
+- [x] assenza di risposta ICMP documentata correttamente;
+- [x] handshake TCP completo osservato;
+- [x] traffico TLS riconosciuto senza decifrarne il contenuto;
+- [x] stesso flusso riconosciuto sui due lati;
+- [x] effetto del NAT compreso;
+- [x] PCAP limitato creato e revisionato;
+- [x] AppArmor mantenuto attivo;
+- [x] nessun PCAP sensibile pubblicato;
+- [x] nessun pacchetto perso dal kernel nelle catture documentate.
+
+## Privacy
+
+Non pubblicare:
+
+- indirizzi MAC reali;
+- nome completo dell'interfaccia Realtek;
+- PCAP grezzi;
+- log integrali non revisionati;
+- query DNS o hostname non necessari;
+- informazioni che possano identificare il dispositivo o il proprietario.
 
 ## Rollback
 
@@ -91,4 +169,4 @@ Ogni cattura deve avere:
 
 ## Prossimo passo
 
-Installare e configurare Suricata usando le conoscenze ottenute dalle catture manuali.
+Fase 7: installare e configurare Suricata inizialmente in modalità passiva, usando le conoscenze ottenute dalle catture manuali.
