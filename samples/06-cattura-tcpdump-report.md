@@ -289,7 +289,51 @@ Il DNS tradizionale ha reso visibili nomi come domini Apple e iCloud. Questo dim
 
 Una query DNS non dimostra però che l'utente abbia aperto volontariamente quel servizio: può essere stata generata automaticamente dal sistema operativo o da un'applicazione in background.
 
-## 7. Risultati parziali
+## 7. Cattura ICMP verso il client
+
+Comando di cattura:
+
+```bash
+sudo tcpdump \
+    -i "$AP_IF" \
+    -n \
+    -vv \
+    -c 6 \
+    "icmp and host $CLIENT_IP"
+```
+
+Traffico generato dal gateway:
+
+```bash
+ping -I "$AP_IF" -c 3 "$CLIENT_IP"
+```
+
+Estratto anonimizzato:
+
+```text
+10.42.0.1 > 10.42.0.x: ICMP echo request, id 60201, seq 1, length 64
+10.42.0.1 > 10.42.0.x: ICMP echo request, id 60201, seq 2, length 64
+10.42.0.1 > 10.42.0.x: ICMP echo request, id 60201, seq 3, length 64
+```
+
+Risultato del comando `ping`:
+
+```text
+3 packets transmitted, 0 received, 100% packet loss
+```
+
+Interpretazione:
+
+- `10.42.0.1` è il gateway che genera le richieste;
+- `10.42.0.x` è il client collegato all'hotspot;
+- `ICMP echo request` è la domanda inviata da `ping`;
+- `seq 1`, `seq 2` e `seq 3` distinguono le tre richieste;
+- lo stesso `id` indica che appartengono alla stessa esecuzione di `ping`;
+- non sono state osservate risposte `ICMP echo reply`.
+
+La cattura dimostra che il gateway ha trasmesso correttamente le richieste sull'interfaccia hotspot. L'assenza delle risposte non dimostra da sola un problema di routing o firewall: molti telefoni ignorano o bloccano le richieste ICMP in ingresso, soprattutto quando lo schermo è bloccato o per politiche del sistema operativo.
+
+## 8. Risultati parziali
 
 - [x] tcpdump installato e funzionante;
 - [x] interfaccia hotspot identificata;
@@ -302,13 +346,14 @@ Una query DNS non dimostra però che l'utente abbia aperto volontariamente quel 
 - [x] proprietario amministrativo di un blocco IP verificato tramite WHOIS;
 - [x] richiesta e risposta DNS tradizionale osservate;
 - [x] record DNS `A`, `AAAA`, `CNAME` e `HTTPS` riconosciuti;
+- [x] richieste ICMP Echo osservate;
+- [x] assenza di risposte ICMP documentata senza attribuirla automaticamente a un guasto di rete;
 - [x] assenza di pacchetti persi dal kernel verificata;
-- [ ] ping ICMP osservato;
 - [ ] handshake TCP completo osservato;
 - [ ] stesso flusso confrontato prima e dopo il NAT;
 - [ ] PCAP controllato salvato e revisionato.
 
-## 8. Privacy
+## 9. Privacy
 
 Non pubblicare:
 
