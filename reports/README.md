@@ -1,28 +1,46 @@
 # Report locali
 
-Questa cartella è riservata ai report originali generati durante il laboratorio.
+Questa cartella è riservata ai report originali e privati generati durante il laboratorio.
 
-Il file `.gitignore` esclude il contenuto della cartella perché i report possono contenere:
+Il file `.gitignore` esclude tutto il contenuto di `reports/`, tranne questo README, perché i report possono contenere:
 
-- indirizzi IPv4 locali completi;
+- indirizzi IPv4 locali e remoti completi;
+- porte temporanee;
 - indirizzi MAC;
-- nomi di interfaccia `wlx...` derivati dal MAC;
-- SSID reali osservati durante le scansioni;
-- domini, host e altri dati della rete locale;
-- output grezzi di strumenti di rete.
+- nomi completi di interfacce `wlx...`;
+- hostname e percorsi personali;
+- SSID reali;
+- domini e query DNS;
+- output grezzi degli strumenti;
+- log del kernel e AppArmor.
 
 ## Regola di separazione
 
-Per ogni fase che produce dati locali conservare due versioni distinte:
+Per ogni fase che produce dati locali conservare due versioni:
 
 ```text
-reports/<data>-fase-<numero>-privato.md
+reports/<numero>-<nome>-private.md
 samples/<numero>-<nome>-report.md
 ```
 
-La prima è il report privato completo e rimane esclusa da Git. La seconda è una copia pubblica anonimizzata e revisionata.
+La prima è il report privato completo e resta esclusa da Git. La seconda è la copia pubblica anonimizzata e revisionata.
 
-Le immagini originali dei report privati devono essere conservate separatamente dai documenti:
+Esempio della fase 6:
+
+```text
+reports/06-cattura-tcpdump-private.md
+samples/06-cattura-tcpdump-report.md
+```
+
+Il PCAP della fase 6 non deve essere conservato nel repository, neppure in `reports/`. Resta nella directory privata esterna:
+
+```text
+$HOME/.local/state/linux-security-lab/phase-06/
+```
+
+## Immagini private
+
+Le immagini originali devono essere conservate separatamente:
 
 ```text
 reports/
@@ -33,38 +51,65 @@ reports/
 `-- README.md
 ```
 
-Da un file Markdown collocato direttamente in `reports/`, il riferimento relativo deve quindi avere questa forma:
+Da un report Markdown in `reports/`:
 
 ```markdown
 ![Descrizione](images/nome-immagine-original.png)
 ```
 
-Esempio per la fase 2:
+## Protezione dei file
 
-```text
-reports/2026-07-15-fase-02-topologia-privato.md
-samples/02-topologia-e-indirizzamento-report.md
+Applicare permessi privati:
+
+```bash
+chmod 600 reports/<report-privato>.md
 ```
 
-## Prima di condividere un report
+Verificare che Git ignori il file:
 
-1. creare una copia del file originale;
+```bash
+git check-ignore -v reports/<report-privato>.md
+```
+
+Controllare lo stato:
+
+```bash
+git status --short
+```
+
+Non usare mai:
+
+```bash
+git add -f reports/<report-privato>.md
+```
+
+## Prima di creare il sample pubblico
+
+1. creare una copia del report privato;
 2. rimuovere SSID domestici e nomi personali;
-3. sostituire gli indirizzi MAC con `<REDACTED>`;
-4. sostituire i nomi `wlx...` completi con `wlx<REDACTED>`;
-5. mascherare l'indirizzo host, per esempio `192.168.10.x`;
-6. eliminare password, token, chiavi e altri segreti;
-7. ridurre gli output alle sole righe necessarie;
-8. controllare manualmente la copia;
-9. pubblicare la copia revisionata soltanto in `samples/`;
-10. non forzare mai con `git add -f` un report originale escluso da `.gitignore`.
+3. sostituire MAC con `<REDACTED>`;
+4. sostituire i nomi completi `wlx...` con `wlx<REDACTED>`;
+5. mascherare IP locali e remoti non necessari;
+6. rimuovere porte temporanee reali;
+7. rimuovere query DNS personali;
+8. eliminare password, token, chiavi e segreti;
+9. ridurre gli output alle sole righe necessarie;
+10. controllare manualmente la copia;
+11. pubblicare soltanto in `samples/`;
+12. non pubblicare PCAP grezzi.
 
-## Fase 2
+## Fase 6
 
-Il report pubblico revisionato della fase 2 si trova in:
+Report pubblico revisionato:
 
 ```text
-samples/02-topologia-e-indirizzamento-report.md
+samples/06-cattura-tcpdump-report.md
 ```
 
-Il report privato conserva localmente i valori completi, ma non deve essere inserito nel repository GitHub.
+Report privato locale:
+
+```text
+reports/06-cattura-tcpdump-private.md
+```
+
+Il report privato conserva interfacce, IP, porte, domini, percorsi e log AppArmor completi e non deve essere inserito nel repository GitHub.
