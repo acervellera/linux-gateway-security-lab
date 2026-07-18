@@ -4,7 +4,7 @@ La cartella `samples/` contiene esempi pubblici derivati da attività realmente 
 
 ## Organizzazione
 
-I report delle fasi completate sono conservati direttamente nella radice di `samples/` con una numerazione coerente:
+Ogni fase completata possiede un solo report pubblico principale nella radice di `samples/`:
 
 ```text
 01-inventario-hardware-rete-report.md
@@ -12,92 +12,63 @@ I report delle fasi completate sono conservati direttamente nella radice di `sam
 03-hotspot-realtek-report.md
 04-dhcp-routing-nat-report.md
 05-firewall-nftables-report.md
+06-cattura-tcpdump-report.md
 ```
 
-Non viene usata una sottocartella `samples/reports/`: ogni fase completata possiede un solo report pubblico principale, facile da trovare e collegare dalla documentazione.
+Non viene usata una sottocartella `samples/reports/`. Gli output supplementari sono ammessi soltanto quando aggiungono materiale utile senza duplicare il report principale.
 
-Gli output brevi o gli altri materiali possono invece avere file separati, purché il loro ruolo sia chiaro. Per esempio:
+## Fase 4
 
-```text
-04-dhcp-routing-nat-output.md
-```
+[`04-dhcp-routing-nat-report.md`](04-dhcp-routing-nat-report.md) documenta DHCP, DNS locale, forwarding IPv4, NAT, traffico prima e dopo la traduzione e sicurezza WPA2-RSN/CCMP.
 
-## Report della fase 4
+[`04-dhcp-routing-nat-output.md`](04-dhcp-routing-nat-output.md) contiene output brevi e revisionati collegati alla fase.
 
-[`04-dhcp-routing-nat-report.md`](04-dhcp-routing-nat-report.md) spiega in modo dettagliato:
+## Fase 5
 
-- funzionamento di `ipv4.method=shared`;
-- sequenza DHCP completa;
-- DNS locale tramite `dnsmasq`;
-- forwarding IPv4;
-- NAT e masquerading;
-- differenza tra cattura prima e dopo il NAT;
-- differenza tra DNS leggibile e contenuto HTTPS cifrato;
-- traffico TCP 443 e UDP 443;
-- configurazione WPA2-RSN con CCMP/AES;
-- test di arresto, riattivazione e rollback;
-- privacy e dati rimossi.
+[`05-firewall-nftables-report.md`](05-firewall-nftables-report.md) documenta filtri `INPUT` e `FORWARD`, test attivi dei blocchi, logging con rate limit, rollback, coesistenza con NetworkManager/Docker/libvirt, script amministrativo, servizio systemd e persistenza dopo riavvio.
 
-Il file [`04-dhcp-routing-nat-output.md`](04-dhcp-routing-nat-output.md) contiene output brevi e revisionati collegati alla stessa fase.
+## Fase 6
 
-## Report della fase 5
+[`06-cattura-tcpdump-report.md`](06-cattura-tcpdump-report.md) è l’unico report pubblico principale della fase e riunisce:
 
-[`05-firewall-nftables-report.md`](05-firewall-nftables-report.md) documenta:
+- filtri BPF e interpretazione di IP, porte e direzioni;
+- traffico UDP 443 compatibile con QUIC/HTTP/3;
+- consultazione WHOIS e limiti di attribuzione;
+- DNS tradizionale e record `A`, `AAAA`, `CNAME`, `HTTPS`;
+- richieste ICMP senza risposta del client;
+- handshake TCP completo e principali flag TCP;
+- confronto riga per riga prima e dopo il NAT;
+- traduzione inversa e decremento TTL;
+- PCAP limitato, snapshot di 128 byte e permessi privati;
+- lettura compatibile con il profilo AppArmor attivo;
+- privacy e conservazione dei dati.
 
-- inventario dei servizi locali;
-- filtro `INPUT`;
-- filtro `FORWARD` stateful;
-- DHCP, DNS e ICMP consentiti;
-- mDNS e WS-Discovery bloccati;
-- test TCP 631 verso il gateway;
-- test dall'hotspot verso la rete privata libvirt;
-- logging con rate limit;
-- rollback e reload;
-- coesistenza con NetworkManager, Docker e libvirt;
-- script amministrativo;
-- servizio systemd dedicato;
-- persistenza verificata dopo un riavvio reale;
-- limiti delle prove dichiarati esplicitamente.
-
-Le configurazioni e gli script collegati sono pubblicati nelle directory tecniche:
-
-```text
-configs/nftables/security-gateway-input-filter.nft
-configs/nftables/security-gateway-filter.nft
-configs/systemd/security-gateway-firewall.service
-scripts/security-gateway-firewall
-```
+I precedenti estratti separati della fase 6 sono stati incorporati nel report principale e rimossi. Il PCAP grezzo non è pubblicato.
 
 ## Contenuti ammessi
 
-Possono essere inseriti:
-
-- report pubblici anonimizzati delle fasi completate;
+- report pubblici anonimizzati;
 - output brevi e revisionati;
-- esempi di configurazione senza segreti;
+- configurazioni prive di segreti;
 - estratti di log anonimizzati;
-- file JSON o CSV di esempio;
 - dati sintetici chiaramente dichiarati;
-- screenshot ricostruiti o ritagliati e revisionati.
-
-Ogni file deve derivare da una fase realmente eseguita oppure essere indicato esplicitamente come dato sintetico.
+- screenshot ricostruiti o revisionati.
 
 ## Contenuti non ammessi
 
-Non devono essere pubblicati:
-
 - password o PSK Wi-Fi;
 - SSID domestici;
-- indirizzi MAC reali non necessari;
+- MAC reali;
 - nome completo di interfacce `wlx...` che incorpora un MAC;
-- hostname o percorsi personali;
-- IP pubblici o dati personali;
-- output integrali non revisionati;
-- catture PCAP grezze;
-- screenshot originali contenenti dati locali;
+- hostname e percorsi personali;
+- IP completi non necessari;
+- porte temporanee associate a sessioni reali;
+- query DNS personali;
+- log integrali;
+- PCAP grezzi;
 - traffico appartenente a terzi.
 
-Questi elementi devono restare nella cartella locale `reports/`, ignorata da Git.
+Questi elementi devono restare nella cartella locale `reports/`, ignorata da Git, oppure in una directory privata esterna al repository.
 
 ## Immagini pubbliche della fase 4
 
@@ -106,14 +77,12 @@ docs/images/04-wifi-security-before.svg
 docs/images/04-wifi-security-after.svg
 ```
 
-Le immagini sono ricostruzioni anonimizzate. Non contengono password, indirizzi MAC, notifiche personali o la barra di stato originale.
+Le immagini sono ricostruzioni anonimizzate.
 
 ## Regola per le fasi future
 
-Quando una fase viene completata:
-
-1. creare un solo report principale `NN-nome-fase-report.md` nella radice di `samples/`;
-2. aggiungere output separati soltanto quando utili;
-3. anonimizzare ogni valore locale;
-4. collegare il report da `docs/README.md` e dallo stato attuale;
+1. creare un solo report principale `NN-nome-fase-report.md`;
+2. aggiungere output separati soltanto quando utili e non duplicati;
+3. anonimizzare ogni valore locale o remoto non necessario;
+4. collegare il report dagli indici e dallo stato attuale;
 5. dichiarare chiaramente ciò che non è stato provato attivamente.
