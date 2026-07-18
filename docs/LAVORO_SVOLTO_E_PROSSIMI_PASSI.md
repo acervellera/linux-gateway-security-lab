@@ -2,9 +2,7 @@
 
 ## Funzione del documento
 
-Questo file riassume l'evoluzione reale del gateway fisico Ubuntu e delle fasi operative verificate.
-
-Per lo stato più aggiornato usare [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md). Per comandi, spiegazioni e rollback usare i documenti in [`steps`](steps).
+Questo file riassume l’evoluzione reale del gateway fisico Ubuntu. Per lo stato più aggiornato usare [`02-STATO-ATTUALE.md`](02-STATO-ATTUALE.md); per comandi e rollback usare le guide in [`steps`](steps).
 
 ## Gateway fisico
 
@@ -13,7 +11,8 @@ Telefono / dispositivo autorizzato
   -> SecurityGatewayLab
   -> Realtek USB AP
   -> Ubuntu gateway
-  -> filtro INPUT e FORWARD nftables
+  -> nftables INPUT e FORWARD
+  -> NAT/masquerading
   -> MediaTek wlp13s0
   -> router
   -> Internet
@@ -21,19 +20,9 @@ Telefono / dispositivo autorizzato
 
 ## Fase 1 completata — Inventario
 
-Verificati:
-
-- Ubuntu e kernel;
-- MediaTek e driver;
-- Realtek e driver;
-- supporto AP;
-- route predefinita;
-- rfkill;
-- reti Docker.
+Verificati Ubuntu, kernel, schede MediaTek e Realtek, driver, supporto AP, route predefinita, rfkill e reti Docker.
 
 ## Fase 2 completata — Topologia
-
-Piano:
 
 ```text
 UPLINK_IF=wlp13s0
@@ -46,119 +35,38 @@ LAB_SSID=SecurityGatewayLab
 
 ## Fase 3 completata — Hotspot
 
-Risultati:
-
-- Realtek in modalità AP;
-- SSID visibile;
-- client reali autenticati e associati;
-- indirizzi `10.42.0.x`;
-- gateway raggiunto;
-- Internet tramite MediaTek;
-- profilo fermato, eliminato e ricreato;
-- segreto WPA non pubblicato.
+Realtek in modalità AP, client reali associati, indirizzi `10.42.0.x`, gateway raggiunto, Internet tramite MediaTek e rollback del profilo verificato.
 
 ## Fase 4 completata — DHCP, routing e NAT
 
 Completata il 16 luglio 2026.
 
-### DHCP e DNS
+Verificati:
 
-NetworkManager usa `ipv4.method=shared`. Sono stati osservati:
+- `dnsmasq` su DHCP e DNS;
+- sequenza DHCP completa;
+- `net.ipv4.ip_forward=1`;
+- masquerading per `10.42.0.0/24`;
+- traffico sui lati Realtek e MediaTek;
+- DNS classico;
+- TCP 443 e UDP 443;
+- WPA2-RSN con CCMP/AES.
 
-```text
-dnsmasq su 10.42.0.1:53 TCP/UDP
-dnsmasq su UDP 67
-DHCPDISCOVER
-DHCPOFFER
-DHCPREQUEST
-DHCPACK
-```
-
-### Forwarding e NAT
+Percorso:
 
 ```text
-net.ipv4.ip_forward = 1
-```
-
-È stata osservata una regola equivalente a:
-
-```text
-ip saddr 10.42.0.0/24
-ip daddr != 10.42.0.0/24
-masquerade
-```
-
-### Prima e dopo il NAT
-
-Sulla Realtek:
-
-```text
-10.42.0.x:porta -> server:443
-```
-
-Sulla MediaTek:
-
-```text
-192.168.10.x:porta -> server:443
-```
-
-Le catture dimostrano i due lati della traduzione, ma non vengono presentate come lo stesso pacchetto abbinato riga per riga.
-
-### Sicurezza Wi-Fi
-
-Configurazione finale:
-
-```text
-key-mgmt: wpa-psk
-proto:    rsn
-pairwise: ccmp
-group:    ccmp
+10.42.0.x:porta -> NAT -> 192.168.10.x:porta -> server:443
 ```
 
 ## Fase 5 completata — Firewall nftables
 
 Completata il 17 luglio 2026.
 
-### Inventario prima del blocco
+### INPUT
 
-Sono state controllate le porte con `ss -lntup`. I servizi rilevanti erano:
+Consentiti DHCP, DNS e ICMP necessari. Bloccati mDNS, WS-Discovery e accessi non previsti al gateway. Testato il blocco TCP 631.
 
-```text
-DHCP hotspot       UDP 67
-DNS hotspot        TCP/UDP 53 su 10.42.0.1
-CUPS               TCP 631 solo loopback
-mDNS/Avahi         UDP 5353
-WS-Discovery/wsdd  UDP 3702
-```
-
-`wsdd` è stato identificato come processo di discovery integrato con GVFS. Non è stato rimosso globalmente: il filtro limita soltanto l'accesso proveniente dall'hotspot.
-
-### Filtro INPUT
-
-Il client può:
-
-- ottenere DHCP;
-- usare il DNS del gateway;
-- usare ICMP verso il gateway;
-- ricevere risposte `established,related`.
-
-Il client non può:
-
-- raggiungere altre porte del gateway;
-- usare mDNS o WS-Discovery verso Ubuntu tramite l'hotspot.
-
-Test attivo:
-
-```text
-client -> 10.42.0.1:631/TCP
-risultato: SGW_INPUT_DROP + DROP
-```
-
-DHCP, DNS e navigazione sono rimasti funzionanti.
-
-### Filtro FORWARD
-
-Politica verificata:
+### FORWARD
 
 ```text
 hotspot -> uplink, new/established/related  ACCEPT
@@ -169,75 +77,89 @@ altre interfacce -> hotspot                 LOG + DROP
 invalid sul percorso controllato            DROP
 ```
 
-Test attivo:
-
-```text
-client 10.42.0.x -> 192.168.122.254:80
-uscita scelta dal kernel: virbr0
-risultato: SGW_FWD_FROM_AP_DROP + DROP
-```
-
-Questo dimostra che il client dell'hotspot non può raggiungere la rete privata libvirt, mentre Internet continua a funzionare sull'uplink autorizzato.
-
-### Logging
-
-Prefissi:
-
-```text
-SGW_INPUT_DROP
-SGW_FWD_FROM_AP_DROP
-SGW_FWD_TO_AP_DROP
-```
-
-Limite:
-
-```text
-5 log/minuto, burst iniziale di 10 pacchetti
-```
-
-Il rate limit limita i messaggi, non il numero di pacchetti bloccati.
-
-### Rollback e coesistenza
-
-Le tabelle del progetto sono state eliminate e ricaricate singolarmente. Sono rimaste presenti:
-
-- chain `nm-sh-*` di NetworkManager;
-- chain `DOCKER-*`;
-- reti e chain libvirt;
-- DHCP, DNS e NAT del profilo condiviso.
-
-Non è mai stato usato `nft flush ruleset`.
+Testato il blocco hotspot→rete libvirt. Internet è rimasto funzionante.
 
 ### Persistenza
 
-Sono stati installati:
+Installati script, configurazioni e servizio `security-gateway-firewall.service`. Persistenza verificata dopo riavvio reale. Il servizio standard `nftables.service` resta disabilitato.
+
+## Fase 6 completata — tcpdump
+
+Completata e verificata il 18 luglio 2026.
+
+### Catture limitate
+
+Sono stati usati filtri BPF con limiti di pacchetti, evitando catture indefinite. Nelle catture documentate il kernel ha sempre riportato zero pacchetti persi.
+
+### DNS
+
+Osservati:
+
+- richieste e risposte sulla porta 53;
+- record `A`, `AAAA`, `CNAME` e `HTTPS`;
+- nomi Apple/iCloud generati dal dispositivo;
+- differenza tra DNS visibile e contenuto HTTPS cifrato.
+
+### ICMP
+
+Il gateway ha inviato tre richieste Echo al telefono. Il telefono non ha risposto. La cattura ha dimostrato la trasmissione sulla Realtek senza attribuire automaticamente l’assenza di risposta a un guasto della rete.
+
+### TCP
+
+Riconosciuto un handshake completo:
 
 ```text
-/etc/security-gateway-firewall/security-gateway-input-filter.nft
-/etc/security-gateway-firewall/security-gateway-filter.nft
-/usr/local/sbin/security-gateway-firewall
-/etc/systemd/system/security-gateway-firewall.service
+SYN -> SYN-ACK -> ACK
 ```
 
-Lo script supporta `load`, `reload` e `unload`, controlla il batch con `nft --check` e modifica soltanto le due tabelle del progetto.
+Osservati anche ACK cumulativi e flag PSH, FIN e RST. Il traffico sulla porta 443 è rimasto cifrato.
 
-Il servizio systemd è:
+### NAT riga per riga
+
+La cattura `-i any` ha mostrato lo stesso datagramma sui due lati:
 
 ```text
-enabled
-active (exited)
+wlx<REDACTED> In  10.42.0.x:PORTA    -> IP_REMOTO:443
+wlp13s0 Out       192.168.10.x:PORTA -> IP_REMOTO:443
 ```
 
-Dopo un riavvio reale sono state ritrovate entrambe le tabelle. Il client ha nuovamente ricevuto DHCP, usato DNS e navigato. Il servizio standard `nftables.service` è rimasto `disabled/inactive`.
+Risposta:
 
-### Limiti dichiarati
+```text
+wlp13s0 In        IP_REMOTO:443 -> 192.168.10.x:PORTA
+wlx<REDACTED> Out IP_REMOTO:443 -> 10.42.0.x:PORTA
+```
 
-Non sono stati generati attivamente:
+Il TTL è diminuito di uno durante il forwarding.
 
-- una nuova connessione da un secondo host dell'uplink verso un client dell'hotspot;
-- un pacchetto `ct state invalid` costruito appositamente.
+### PCAP privato
 
-Le relative regole sono presenti. Pochi pacchetti `invalid` reali sono stati osservati e bloccati.
+Creato un file PCAP con:
+
+```text
+20 record
+snapshot 128 byte
+formato PCAP 2.4
+Linux cooked v2
+permessi 600
+dimensione circa 2,8 KiB
+```
+
+AppArmor ha bloccato creazione e lettura diretta da parte di `tcpdump`. La protezione non è stata disabilitata: i dati sono stati trasferiti tramite standard output e standard input.
+
+### Documentazione
+
+Unico report pubblico:
+
+- [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md).
+
+Report privato locale:
+
+```text
+reports/06-cattura-tcpdump-private.md
+```
+
+Il report privato e il PCAP non devono essere aggiunti a Git.
 
 ## Stato corrente
 
@@ -248,8 +170,8 @@ Le relative regole sono presenti. Pochi pacchetti `invalid` reali sono stati oss
 | 3. Hotspot | COMPLETATA |
 | 4. DHCP, routing e NAT | COMPLETATA |
 | 5. Firewall nftables | COMPLETATA |
-| 6. tcpdump | PROSSIMA |
-| 7. Suricata | DA FARE |
+| 6. tcpdump | COMPLETATA |
+| 7. Suricata | PROSSIMA |
 | 8. Zeek | DA FARE |
 | 9. Python | DA FARE |
 | 10. Docker | DA FARE |
@@ -257,38 +179,33 @@ Le relative regole sono presenti. Pochi pacchetti `invalid` reali sono stati oss
 
 ## Prossimi passi immediati
 
-La prossima attività è [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md).
+Prima della fase 7:
 
-Ordine previsto:
+1. copiare il report privato in `reports/06-cattura-tcpdump-private.md`;
+2. applicare permessi `600`;
+3. verificare `git check-ignore`;
+4. controllare che non esistano PCAP tracciati;
+5. eseguire `git status`.
 
-1. ripassare il percorso dei pacchetti;
-2. studiare la sintassi dei filtri BPF;
-3. catturare separatamente hotspot, uplink e bridge virtuali;
-4. limitare durata e quantità delle catture;
-5. salvare PCAP con permessi appropriati;
-6. riconoscere DNS, TCP, TLS e QUIC;
-7. confrontare metadati prima e dopo NAT;
-8. anonimizzare gli esempi pubblici;
-9. preparare materiale per Suricata, Zeek e Python.
+Poi seguire [`steps/07-suricata.md`](steps/07-suricata.md) iniziando in modalità passiva IDS, senza bloccare il traffico.
 
 ## Report pubblici e privati
 
 Nel repository pubblico:
 
-- documentazione revisionata;
+- guide revisionate;
 - configurazioni parametrizzate;
-- script commentato;
-- unità systemd revisionata;
-- report finale anonimizzato;
-- output brevi e immagini ricostruite.
+- script commentati;
+- report principali anonimizzati;
+- output brevi e immagini revisionate.
 
-Nella cartella locale `reports/`, ignorata da Git:
+Nella cartella locale `reports/`:
 
 - output integrali;
-- screenshot originali;
-- MAC;
-- nome completo della Realtek;
-- log del kernel;
+- nomi reali delle interfacce;
+- IP e porte reali;
+- query DNS osservate;
+- log AppArmor;
 - report personali.
 
-Non pubblicare password, token, PCAP grezzi o traffico di terzi.
+Non pubblicare password, token, MAC, PCAP grezzi o traffico di terzi.
