@@ -1,27 +1,24 @@
 # Fase 6 — Report pubblico cattura tcpdump
 
-**Data di avvio:** 18 luglio 2026  
-**Stato:** **IN CORSO**
+**Data di completamento:** 18 luglio 2026  
+**Stato:** **COMPLETATA E VERIFICATA**
 
-Questo report documenta prove reali eseguite sul gateway Ubuntu fisico. I nomi completi delle interfacce, gli indirizzi MAC, gli identificativi del dispositivo e gli eventuali dati sensibili vengono rimossi o anonimizzati.
+Questo è l’unico report pubblico principale della fase 6. Riunisce gli esempi realmente osservati durante le catture manuali, con indirizzi locali, nomi completi delle interfacce, porte temporanee e destinazioni remote anonimizzati.
 
-## 1. Obiettivo della fase
+## 1. Obiettivo
 
-Osservare in modo controllato il traffico del client autorizzato collegato all'hotspot e imparare a riconoscere:
+Osservare in modo controllato il traffico di un client autorizzato collegato all’hotspot e imparare a riconoscere:
 
-- indirizzi IP sorgente e destinazione;
-- porte sorgente e destinazione;
+- IP e porte sorgente e destinazione;
 - direzione dei pacchetti;
-- protocolli TCP e UDP;
-- traffico web cifrato su porta 443;
-- richieste e risposte DNS tradizionali;
-- record DNS `A`, `AAAA`, `CNAME` e `HTTPS`;
-- differenza tra traffico prima e dopo il NAT;
-- informazioni ottenibili tramite WHOIS senza attribuire un IP a una persona specifica.
+- protocolli DNS, ICMP, TCP e UDP;
+- handshake TCP e principali flag;
+- traffico cifrato su TCP/443 e UDP/443;
+- traduzione NAT sui due lati del gateway;
+- salvataggio PCAP limitato;
+- vincoli di privacy e interazione con AppArmor.
 
-## 2. Ambiente verificato
-
-Valori pubblicabili:
+## 2. Ambiente anonimizzato
 
 ```text
 AP_IF=wlx<REDACTED>
@@ -40,30 +37,39 @@ libpcap 1.10.6
 OpenSSL 3.5.5
 ```
 
-## 3. Prima cattura limitata del client
+## 3. Prima cattura limitata
 
-Comando eseguito:
+Comando:
 
 ```bash
 sudo tcpdump -ni "$AP_IF" -c 5 "host $CLIENT_IP"
 ```
 
-Opzioni:
+Significato:
 
-- `-n`: non risolve indirizzi e porte in nomi;
-- `-i`: seleziona l'interfaccia di cattura;
-- `-c 5`: termina automaticamente dopo cinque pacchetti;
-- `host $CLIENT_IP`: limita la cattura al solo client autorizzato.
+- `sudo`: consente l’accesso alla cattura di rete;
+- `-n`: evita la risoluzione degli IP in nomi;
+- `-i`: seleziona l’interfaccia;
+- `-c 5`: termina dopo cinque pacchetti;
+- `host $CLIENT_IP`: limita il filtro al client autorizzato.
 
 Estratto anonimizzato:
 
 ```text
-IP 10.42.0.x.56988 > 163.70.128.63.443: UDP, length 68
-IP 163.70.128.63.443 > 10.42.0.x.56988: UDP, length 80
-IP 10.42.0.x.56988 > 163.70.128.63.443: UDP, length 55
-IP 163.70.128.63.443 > 10.42.0.x.56988: UDP, length 80
-IP 10.42.0.x.57856 > 157.240.231.175.443: Flags [R.], length 0
+10.42.0.x.PORTA > REMOTE_IP_A.443: UDP, length 68
+REMOTE_IP_A.443 > 10.42.0.x.PORTA: UDP, length 80
+10.42.0.x.PORTA > REMOTE_IP_A.443: UDP, length 55
+REMOTE_IP_A.443 > 10.42.0.x.PORTA: UDP, length 80
+10.42.0.x.PORTA > REMOTE_IP_B.443: Flags [R.], length 0
 ```
+
+Interpretazione:
+
+```text
+IP_sorgente.porta_sorgente > IP_destinazione.porta_destinazione
+```
+
+Il traffico UDP verso la porta 443 è compatibile con QUIC/HTTP/3, ma la porta da sola non costituisce una prova assoluta. Il contenuto applicativo resta cifrato. `Flags [R.]` indica RST + ACK e rappresenta un reset o una chiusura immediata, non l’handshake iniziale.
 
 Statistiche:
 
@@ -73,80 +79,29 @@ Statistiche:
 0 packets dropped by kernel
 ```
 
-## 4. Interpretazione di IP e porte
+## 4. Consultazione WHOIS
 
-La forma mostrata da tcpdump è:
-
-```text
-IP_sorgente.porta_sorgente > IP_destinazione.porta_destinazione
-```
-
-Esempio:
-
-```text
-10.42.0.x.56988 > 163.70.128.63.443
-```
-
-Interpretazione:
-
-```text
-10.42.0.x     indirizzo privato del client nell'hotspot
-56988         porta temporanea scelta dal client
->             direzione del pacchetto
-163.70.128.63 indirizzo pubblico remoto
-443           porta normalmente associata a traffico web cifrato
-```
-
-La riga inversa rappresenta una risposta dal server remoto verso il client.
-
-Il traffico UDP verso la porta 443 è compatibile con QUIC/HTTP3, ma la sola porta non costituisce una prova assoluta del protocollo applicativo. Il contenuto resta cifrato.
-
-Il pacchetto TCP con `Flags [R.]` contiene i flag RST e ACK e rappresenta la chiusura o il reset di una connessione, non il normale handshake iniziale.
-
-## 5. Esempio reale di consultazione WHOIS
-
-Comando:
+Comando usato su un indirizzo remoto osservato:
 
 ```bash
-whois 157.240.231.175
+whois <REMOTE_IP>
 ```
 
-Campi significativi osservati:
+Campi utili:
 
 ```text
-NetRange:     157.240.0.0 - 157.240.255.255
-CIDR:         157.240.0.0/16
-NetName:      THEFA-3
-Organization: Facebook, Inc.
-Country:      US
+NetRange       intervallo registrato
+CIDR           blocco di rete
+NetName        nome amministrativo del blocco
+Organization   organizzazione registrataria
+Country        dato amministrativo della registrazione
 ```
 
-Interpretazione:
+Una consultazione ha associato il blocco a `Facebook, Inc.`. La conclusione corretta è che l’indirizzo apparteneva a una rete registrata a tale organizzazione. Il solo WHOIS non dimostra quale applicazione fosse in uso, quale persona generasse il traffico, la posizione fisica certa del server o il contenuto della comunicazione.
 
-- `NetRange` indica l'intervallo di indirizzi registrato;
-- `CIDR /16` rappresenta il blocco di rete `157.240.0.0/16`;
-- `NetName` è il nome amministrativo del blocco;
-- `Organization` indica l'organizzazione registrataria della rete;
-- `Country` descrive il dato amministrativo della registrazione, non la posizione fisica certa del singolo server.
+## 5. DNS tradizionale
 
-Conclusione corretta:
-
-```text
-L'indirizzo appartiene a un blocco registrato a Facebook, Inc.
-```
-
-Conclusioni non giustificate dal solo WHOIS:
-
-```text
-una persona specifica stava usando una determinata applicazione;
-il server era fisicamente nell'indirizzo postale mostrato;
-la posizione geografica del singolo IP è certa;
-il contenuto della comunicazione è noto.
-```
-
-## 6. Cattura DNS tradizionale
-
-Comando eseguito:
+Comando:
 
 ```bash
 sudo tcpdump \
@@ -157,13 +112,27 @@ sudo tcpdump \
     "host $CLIENT_IP and (udp port 53 or tcp port 53)"
 ```
 
-Il filtro combina tre condizioni:
+Estratto anonimizzato:
 
-- il pacchetto deve appartenere al client autorizzato;
-- deve usare la porta DNS 53;
-- può usare UDP oppure TCP.
+```text
+10.42.0.x.PORTA > 10.42.0.1.53: ID+ HTTPS? servizio.example.
+10.42.0.x.PORTA > 10.42.0.1.53: ID+ A? servizio.example.
+10.42.0.1.53 > 10.42.0.x.PORTA: ID ... CNAME ... A IPV4_REMOTO
+10.42.0.1.53 > 10.42.0.x.PORTA: ID ... CNAME ... A ... AAAA ...
+```
 
-La cattura è stata interrotta manualmente dopo otto pacchetti:
+Sono stati riconosciuti:
+
+- `A`: indirizzo IPv4;
+- `AAAA`: indirizzo IPv6;
+- `CNAME`: alias verso un altro nome;
+- `HTTPS`: record DNS con informazioni sul servizio HTTPS, distinto dal contenuto HTTPS;
+- identificativo di transazione uguale nella domanda e nella risposta;
+- porta temporanea del client e porta DNS 53 del gateway.
+
+La cattura ha mostrato che il DNS tradizionale può rivelare i nomi interrogati anche quando il successivo traffico applicativo è cifrato. Una query può comunque essere generata automaticamente dal sistema operativo o da un’applicazione in background.
+
+Risultato:
 
 ```text
 8 packets captured
@@ -171,127 +140,9 @@ La cattura è stata interrotta manualmente dopo otto pacchetti:
 0 packets dropped by kernel
 ```
 
-Estratto anonimizzato:
+## 6. ICMP
 
-```text
-10.42.0.x.60253 > 10.42.0.1.53: 6469+ HTTPS? mesu.apple.com.
-10.42.0.x.55405 > 10.42.0.1.53: 35583+ A? mesu.apple.com.
-10.42.0.1.53 > 10.42.0.x.55405: 35583 ... CNAME ... A 23.60.188.50
-10.42.0.x.52925 > 10.42.0.1.53: 60270+ HTTPS? mask-api.icloud.com.
-10.42.0.x.60128 > 10.42.0.1.53: 28287+ A? mask-api.icloud.com.
-10.42.0.1.53 > 10.42.0.x.52925: 60270 ... CNAME ... A ... AAAA ...
-10.42.0.1.53 > 10.42.0.x.60128: 28287 ... CNAME ... A ...
-```
-
-### 6.1 Direzione e ruoli
-
-Esempio di richiesta:
-
-```text
-10.42.0.x.55405 > 10.42.0.1.53
-```
-
-Significa:
-
-```text
-client:porta_temporanea -> gateway:porta_DNS
-```
-
-Esempio di risposta:
-
-```text
-10.42.0.1.53 > 10.42.0.x.55405
-```
-
-Significa:
-
-```text
-gateway:porta_DNS -> client:stessa_porta_temporanea
-```
-
-Il gateway `10.42.0.1` riceve la domanda DNS dal client, ottiene o recupera la risposta e la restituisce alla porta temporanea che aveva originato la richiesta.
-
-### 6.2 Identificativo della transazione
-
-Numeri come:
-
-```text
-35583
-60270
-28287
-```
-
-sono identificativi DNS. La risposta riporta lo stesso identificativo della domanda corrispondente, permettendo al client di abbinarle anche quando esistono più interrogazioni contemporanee.
-
-Il simbolo `+` dopo l'identificativo indica che nella richiesta è impostato il bit `RD`, cioè `Recursion Desired`: il client chiede al resolver di completare la ricerca per suo conto.
-
-### 6.3 Tipi di record osservati
-
-`A?` richiede uno o più indirizzi IPv4:
-
-```text
-A 23.60.188.50
-```
-
-`AAAA` rappresenta un indirizzo IPv6:
-
-```text
-AAAA 2a01:...::...
-```
-
-`CNAME` indica che il nome richiesto è un alias di un altro nome. Possono essere presenti più alias consecutivi prima di arrivare all'indirizzo finale:
-
-```text
-nome richiesto
-  -> CNAME
-  -> CNAME
-  -> nodo CDN
-  -> indirizzo IP
-```
-
-`HTTPS?` non indica il contenuto di una pagina HTTPS. È una richiesta DNS per il record di tipo `HTTPS`, usato per pubblicare informazioni su come raggiungere in modo efficiente un servizio HTTPS. Il DNS resta distinto dalla successiva connessione TLS cifrata.
-
-### 6.4 CDN e risposte multiple
-
-La catena di `CNAME` osservata conduce anche a nomi appartenenti a una CDN. Una CDN distribuisce copie o punti di accesso del servizio su più sistemi e può restituire indirizzi differenti in base alla rete, alla posizione approssimativa, al carico e al momento della richiesta.
-
-La presenza di più record `A` o `AAAA` offre al dispositivo più destinazioni possibili. Non significa che il telefono stabilirà necessariamente una connessione con ognuna di esse.
-
-### 6.5 Campi del pacchetto IP e UDP
-
-Esempio:
-
-```text
-IP (tos 0x0, ttl 64, id 14323, offset 0, flags [none], proto UDP (17), length 60)
-```
-
-Interpretazione:
-
-- `tos 0x0`: nessuna marcatura IP speciale osservata;
-- `ttl 64`: limite iniziale o residuo dei passaggi attraverso router;
-- `id`: identificativo IPv4 usato anche per la frammentazione;
-- `offset 0`: il frammento, se presente, comincerebbe dall'inizio;
-- `flags [DF]`: `Don't Fragment`, il pacchetto non deve essere frammentato;
-- `proto UDP (17)`: il protocollo trasportato da IPv4 è UDP, numero 17;
-- `length`: lunghezza totale del pacchetto IPv4.
-
-La dicitura:
-
-```text
-[udp sum ok]
-```
-
-indica che il checksum UDP verificato durante la cattura risulta corretto.
-
-### 6.6 Considerazione sulla privacy
-
-Il DNS tradizionale ha reso visibili nomi come domini Apple e iCloud. Questo dimostra che, anche quando il traffico applicativo è cifrato, una cattura DNS può rivelare i servizi contattati o interrogati dal dispositivo.
-
-Una query DNS non dimostra però che l'utente abbia aperto volontariamente quel servizio: può essere stata generata automaticamente dal sistema operativo o da un'applicazione in background.
-
-## 7. Cattura ICMP verso il client
-
-Comando di cattura:
+Cattura:
 
 ```bash
 sudo tcpdump \
@@ -302,7 +153,7 @@ sudo tcpdump \
     "icmp and host $CLIENT_IP"
 ```
 
-Traffico generato dal gateway:
+Traffico generato:
 
 ```bash
 ping -I "$AP_IF" -c 3 "$CLIENT_IP"
@@ -311,55 +162,179 @@ ping -I "$AP_IF" -c 3 "$CLIENT_IP"
 Estratto anonimizzato:
 
 ```text
-10.42.0.1 > 10.42.0.x: ICMP echo request, id 60201, seq 1, length 64
-10.42.0.1 > 10.42.0.x: ICMP echo request, id 60201, seq 2, length 64
-10.42.0.1 > 10.42.0.x: ICMP echo request, id 60201, seq 3, length 64
+10.42.0.1 > 10.42.0.x: ICMP echo request, id ID_ICMP, seq 1, length 64
+10.42.0.1 > 10.42.0.x: ICMP echo request, id ID_ICMP, seq 2, length 64
+10.42.0.1 > 10.42.0.x: ICMP echo request, id ID_ICMP, seq 3, length 64
 ```
 
-Risultato del comando `ping`:
+Risultato:
 
 ```text
 3 packets transmitted, 0 received, 100% packet loss
 ```
 
-Interpretazione:
+La cattura dimostra che il gateway ha trasmesso le tre richieste sull’interfaccia hotspot. Il telefono non ha inviato `echo reply`. Questa assenza non dimostra da sola un problema di routing o firewall, perché molti dispositivi mobili ignorano ICMP in ingresso.
 
-- `10.42.0.1` è il gateway che genera le richieste;
-- `10.42.0.x` è il client collegato all'hotspot;
-- `ICMP echo request` è la domanda inviata da `ping`;
-- `seq 1`, `seq 2` e `seq 3` distinguono le tre richieste;
-- lo stesso `id` indica che appartengono alla stessa esecuzione di `ping`;
-- non sono state osservate risposte `ICMP echo reply`.
+## 7. Handshake TCP
 
-La cattura dimostra che il gateway ha trasmesso correttamente le richieste sull'interfaccia hotspot. L'assenza delle risposte non dimostra da sola un problema di routing o firewall: molti telefoni ignorano o bloccano le richieste ICMP in ingresso, soprattutto quando lo schermo è bloccato o per politiche del sistema operativo.
+Comando:
 
-## 8. Risultati parziali
+```bash
+sudo tcpdump \
+    -i "$AP_IF" \
+    -n \
+    -vv \
+    -c 30 \
+    "host $CLIENT_IP and tcp and (port 80 or port 443)"
+```
 
-- [x] tcpdump installato e funzionante;
-- [x] interfaccia hotspot identificata;
-- [x] uplink identificato;
-- [x] client autorizzato identificato;
-- [x] cattura limitata a cinque pacchetti;
-- [x] traffico in uscita e risposte osservati;
-- [x] UDP 443 compatibile con QUIC riconosciuto;
-- [x] TCP RST/ACK riconosciuto;
-- [x] proprietario amministrativo di un blocco IP verificato tramite WHOIS;
-- [x] richiesta e risposta DNS tradizionale osservate;
-- [x] record DNS `A`, `AAAA`, `CNAME` e `HTTPS` riconosciuti;
-- [x] richieste ICMP Echo osservate;
-- [x] assenza di risposte ICMP documentata senza attribuirla automaticamente a un guasto di rete;
-- [x] assenza di pacchetti persi dal kernel verificata;
-- [ ] handshake TCP completo osservato;
-- [ ] stesso flusso confrontato prima e dopo il NAT;
-- [ ] PCAP controllato salvato e revisionato.
+Handshake completo anonimizzato:
 
-## 9. Privacy
+```text
+10.42.0.x.PORTA > REMOTE_IP.443: Flags [SEW], seq N, length 0
+REMOTE_IP.443 > 10.42.0.x.PORTA: Flags [S.], seq M, ack N+1, length 0
+10.42.0.x.PORTA > REMOTE_IP.443: Flags [.], seq 1, ack 1, length 0
+```
+
+Sequenza:
+
+```text
+client -> server  SYN
+server -> client  SYN + ACK
+client -> server  ACK
+```
+
+Flag riconosciuti:
+
+- `S`: SYN;
+- `.`: ACK;
+- `E`: ECE, collegato a ECN;
+- `W`: CWR, collegato a ECN;
+- `P.`: PSH + ACK;
+- `F.`: FIN + ACK;
+- `R`: RST.
+
+Dopo l’handshake sono stati osservati segmenti dati e ACK cumulativi. La porta TCP 443 e la sequenza dei pacchetti sono compatibili con TLS, ma il contenuto applicativo non è stato decifrato.
+
+Statistiche:
+
+```text
+30 packets captured
+34 packets received by filter
+0 packets dropped by kernel
+```
+
+## 8. Confronto prima e dopo il NAT
+
+Comando:
+
+```bash
+sudo tcpdump \
+    -i any \
+    -nn \
+    -tttt \
+    -vv \
+    -c 80 \
+    "((host $CLIENT_IP) or (host $UPLINK_IP)) and
+     (tcp port 80 or tcp port 443 or udp port 443)"
+```
+
+Il messaggio sulla modalità promiscua non supportata da `any` è informativo. `any` è un dispositivo virtuale che usa Linux cooked capture.
+
+Stesso datagramma in uscita:
+
+```text
+wlx<REDACTED> In  10.42.0.x.PORTA    > REMOTE_IP.443: UDP, length L
+wlp13s0 Out       192.168.10.x.PORTA > REMOTE_IP.443: UDP, length L
+```
+
+Risposta:
+
+```text
+wlp13s0 In        REMOTE_IP.443 > 192.168.10.x.PORTA: UDP, length R
+wlx<REDACTED> Out REMOTE_IP.443 > 10.42.0.x.PORTA: UDP, length R
+```
+
+Il NAT ha sostituito l’IP sorgente privato del client con l’IP dell’uplink. Al ritorno, conntrack ha ripristinato la destinazione originale. La porta è rimasta invariata negli esempi osservati, ma il NAT può tradurla quando necessario.
+
+È stato osservato anche il decremento del TTL:
+
+```text
+hotspot In  ttl 64 -> uplink Out ttl 63
+uplink In   ttl 82 -> hotspot Out ttl 81
+```
+
+Statistiche:
+
+```text
+80 packets captured
+111 packets received by filter
+0 packets dropped by kernel
+```
+
+## 9. PCAP controllato e AppArmor
+
+Il PCAP privato è stato prodotto fuori dal repository con:
+
+- massimo 20 record;
+- filtro UDP porta 443;
+- snapshot length di 128 byte;
+- formato PCAP 2.4, Linux cooked v2;
+- dimensione di circa 2,8 KiB;
+- permessi finali `600`.
+
+Poiché il profilo AppArmor `tcpdump` impediva la creazione e l’apertura diretta nella cartella privata, è stata usata una pipe senza disabilitare AppArmor:
+
+```bash
+set -o pipefail
+
+sudo tcpdump \
+    -i any \
+    -nn \
+    -s 128 \
+    -c 20 \
+    -w - \
+    "((host $CLIENT_IP) or (host $UPLINK_IP)) and udp port 443" \
+    | dd of="$PCAP_FILE" status=none
+```
+
+Lettura:
+
+```bash
+tcpdump -nn -tttt -r - < "$PCAP_FILE"
+```
+
+Il journal ha confermato negazioni AppArmor per `mknod`, `open` e `dac_read_search`. Il profilo è rimasto attivo. `-s 128` limita i byte materialmente salvati, anche quando tcpdump mostra la lunghezza originale del datagramma.
+
+## 10. Risultati finali
+
+- [x] traffico del client catturato con limiti precisi;
+- [x] IP, porte e direzioni interpretati;
+- [x] DNS tradizionale osservato;
+- [x] record `A`, `AAAA`, `CNAME` e `HTTPS` riconosciuti;
+- [x] richieste ICMP osservate;
+- [x] assenza di risposta ICMP documentata senza attribuirla automaticamente a un guasto;
+- [x] handshake TCP completo riconosciuto;
+- [x] traffico TCP/443 e UDP/443 riconosciuto come cifrato;
+- [x] NAT verificato riga per riga sui due lati;
+- [x] traduzione inversa e decremento TTL verificati;
+- [x] PCAP limitato creato e letto;
+- [x] AppArmor mantenuto attivo;
+- [x] nessun PCAP grezzo pubblicato;
+- [x] nessun pacchetto perso dal kernel nelle catture documentate.
+
+## 11. Privacy
 
 Non pubblicare:
 
-- indirizzi MAC reali;
-- nome completo dell'interfaccia Realtek;
+- indirizzi MAC;
+- nome completo dell’interfaccia Realtek;
+- IP locali completi non necessari;
+- porte temporanee associate a sessioni reali;
+- destinazioni remote integrali;
+- query DNS personali;
+- log integrali;
 - PCAP grezzi;
-- log integrali non revisionati;
-- hostname, query DNS o dati applicativi sensibili non necessari;
-- informazioni che possano identificare il dispositivo o il proprietario.
+- hostname e percorsi personali.
+
+I materiali completi devono restare nella cartella locale `reports/`, ignorata da Git, oppure in una directory privata esterna al repository.
