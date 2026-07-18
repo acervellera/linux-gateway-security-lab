@@ -8,7 +8,7 @@ COMPLETATA E VERIFICATA — 18 luglio 2026
 
 ## Obiettivo raggiunto
 
-È stato osservato in modo controllato il traffico del client autorizzato collegato all'hotspot, riconoscendo protocolli, direzioni, handshake TCP, richieste DNS e traduzione NAT sui due lati del gateway.
+È stato osservato in modo controllato il traffico del client autorizzato collegato all’hotspot, riconoscendo protocolli, direzioni, handshake TCP, richieste DNS, traffico cifrato e traduzione NAT sui due lati del gateway.
 
 ## Concetti verificati
 
@@ -23,8 +23,7 @@ COMPLETATA E VERIFICATA — 18 luglio 2026
 - flag TCP ACK, PSH, FIN e RST;
 - indirizzi prima e dopo il NAT;
 - decremento del TTL durante il forwarding;
-- snapshot length;
-- formato PCAP;
+- snapshot length e formato PCAP;
 - limiti di privacy;
 - interazione tra `tcpdump` e AppArmor.
 
@@ -58,7 +57,7 @@ sudo tcpdump \
     "host $CLIENT_IP and (udp port 53 or tcp port 53)"
 ```
 
-Sono state osservate domande e risposte DNS con record `A`, `AAAA`, `CNAME` e `HTTPS`.
+Sono state osservate domande e risposte con record `A`, `AAAA`, `CNAME` e `HTTPS`.
 
 ### ICMP
 
@@ -71,7 +70,7 @@ sudo tcpdump \
     "icmp and host $CLIENT_IP"
 ```
 
-Sono state osservate tre richieste Echo dal gateway verso il client. Il telefono non ha risposto; la cattura ha comunque dimostrato che i pacchetti sono stati trasmessi correttamente sull'interfaccia hotspot.
+Sono state osservate tre richieste Echo dal gateway verso il client. Il telefono non ha risposto; la cattura ha comunque dimostrato che i pacchetti sono stati trasmessi sull’interfaccia hotspot.
 
 ### Handshake TCP
 
@@ -84,7 +83,7 @@ sudo tcpdump \
     "host $CLIENT_IP and tcp and (port 80 or port 443)"
 ```
 
-È stata riconosciuta la sequenza completa:
+Sequenza riconosciuta:
 
 ```text
 client -> server  SYN
@@ -96,7 +95,20 @@ Sono stati osservati anche dati cifrati successivi e flag TCP `PSH`, `FIN` e `RS
 
 ## Confronto prima e dopo il NAT
 
-La cattura simultanea su tutte le interfacce ha mostrato lo stesso flusso prima e dopo la traduzione:
+Cattura simultanea:
+
+```bash
+sudo tcpdump \
+    -i any \
+    -nn \
+    -tttt \
+    -vv \
+    -c 80 \
+    "((host $CLIENT_IP) or (host $UPLINK_IP)) and
+     (tcp port 80 or tcp port 443 or udp port 443)"
+```
+
+Flusso in uscita:
 
 ```text
 wlx<REDACTED> In  10.42.0.x:PORTA    -> IP_REMOTO:443
@@ -110,20 +122,21 @@ wlp13s0 In        IP_REMOTO:443 -> 192.168.10.x:PORTA
 wlx<REDACTED> Out IP_REMOTO:443 -> 10.42.0.x:PORTA
 ```
 
-Il TTL è diminuito di uno durante il forwarding, confermando il passaggio attraverso il gateway.
+Il TTL è diminuito di uno durante il forwarding, confermando il passaggio attraverso Ubuntu come router.
 
 ## PCAP controllato
 
-Il PCAP è stato salvato fuori dal repository con:
+Il file privato è stato salvato fuori dal repository con:
 
 - filtro preciso;
-- massimo 20 pacchetti;
+- massimo 20 record;
 - snapshot length di 128 byte;
+- formato PCAP 2.4, Linux cooked v2;
 - permessi finali `600`;
 - dimensione di circa 2,8 KiB;
 - nessuna pubblicazione del file grezzo.
 
-A causa del profilo AppArmor attivo, `tcpdump` non poteva creare o aprire direttamente il file nella cartella privata. La cattura e la lettura sono state completate senza disabilitare AppArmor usando standard output e standard input:
+A causa del profilo AppArmor attivo, `tcpdump` non poteva creare o aprire direttamente il file nella cartella privata. La cattura e la lettura sono state completate senza modificare AppArmor:
 
 ```bash
 sudo tcpdump ... -w - | dd of="$PCAP_FILE" status=none
@@ -131,12 +144,23 @@ sudo tcpdump ... -w - | dd of="$PCAP_FILE" status=none
 tcpdump -nn -tttt -r - < "$PCAP_FILE"
 ```
 
-## Report ed esempi
+## Report pubblico
 
-- `samples/06-cattura-tcpdump-report.md`
-- `samples/06-handshake-tcp-report.md`
-- `samples/06-nat-prima-dopo-report.md`
-- `samples/06-pcap-apparmor-report.md`
+Unico report principale:
+
+- [`../../samples/06-cattura-tcpdump-report.md`](../../samples/06-cattura-tcpdump-report.md).
+
+Il report riunisce gli esempi DNS, ICMP, handshake TCP, NAT, PCAP e AppArmor. I precedenti frammenti separati sono stati incorporati e rimossi.
+
+## Report privato
+
+Il report completo con valori locali deve essere conservato esclusivamente in:
+
+```text
+reports/06-cattura-tcpdump-private.md
+```
+
+La cartella `reports/` è ignorata da Git. Il PCAP resta nella directory privata esterna al repository.
 
 ## Test di completamento
 
@@ -144,7 +168,7 @@ tcpdump -nn -tttt -r - < "$PCAP_FILE"
 - [x] richieste ICMP osservate;
 - [x] assenza di risposta ICMP documentata correttamente;
 - [x] handshake TCP completo osservato;
-- [x] traffico TLS riconosciuto senza decifrarne il contenuto;
+- [x] traffico cifrato riconosciuto senza decifrarlo;
 - [x] stesso flusso riconosciuto sui due lati;
 - [x] effetto del NAT compreso;
 - [x] PCAP limitato creato e revisionato;
@@ -157,16 +181,17 @@ tcpdump -nn -tttt -r - < "$PCAP_FILE"
 Non pubblicare:
 
 - indirizzi MAC reali;
-- nome completo dell'interfaccia Realtek;
+- nome completo dell’interfaccia Realtek;
+- IP e porte completi non necessari;
 - PCAP grezzi;
-- log integrali non revisionati;
-- query DNS o hostname non necessari;
-- informazioni che possano identificare il dispositivo o il proprietario.
+- log integrali;
+- query DNS personali;
+- hostname e percorsi locali.
 
 ## Rollback
 
-`tcpdump` non modifica la rete. Terminare la cattura con `Ctrl+C` e rimuovere in modo sicuro eventuali file non necessari.
+`tcpdump` non modifica la rete. Terminare la cattura con `Ctrl+C` e rimuovere in modo sicuro eventuali file non più necessari.
 
 ## Prossimo passo
 
-Fase 7: installare e configurare Suricata inizialmente in modalità passiva, usando le conoscenze ottenute dalle catture manuali.
+Fase 7: installare e configurare Suricata inizialmente in modalità passiva IDS, dopo aver verificato che tutta la documentazione della fase 6 sia aggiornata e che il report privato resti fuori da Git.
