@@ -44,16 +44,17 @@ Telefono / dispositivo autorizzato
 
 ## Stato verificato
 
-Le prime sei fasi sono completate:
+Le prime sette fasi sono completate:
 
 1. hardware e rete inventariati;
 2. piano IP definito;
 3. hotspot reale verificato;
 4. DHCP, routing e NAT verificati;
 5. firewall `nftables` stateful reso persistente;
-6. catture tcpdump con DNS, ICMP, handshake TCP, NAT e PCAP controllato verificate.
+6. catture tcpdump con DNS, ICMP, handshake TCP, NAT e PCAP controllato verificate;
+7. Suricata IDS passivo con alert controllato, avvio on demand e rotazione log verificato.
 
-La fase 7, Suricata, è la prossima attività.
+La fase 8, Zeek, è la prossima attività.
 
 | Fase | Stato |
 |---:|---|
@@ -63,28 +64,29 @@ La fase 7, Suricata, è la prossima attività.
 | 4. DHCP, routing e NAT | COMPLETATA |
 | 5. Firewall nftables | COMPLETATA |
 | 6. tcpdump | COMPLETATA |
-| 7. Suricata | PROSSIMA |
-| 8. Zeek | DA FARE |
+| 7. Suricata | COMPLETATA |
+| 8. Zeek | PROSSIMA |
 | 9. Python | DA FARE |
 | 10. Docker dashboard | DA FARE |
 | 11. Test e hardening | DA FARE |
 
-## Risultati della fase 6
+## Risultati della fase 7
 
-Sono stati osservati e documentati:
+Sono stati verificati:
 
-- traffico del client autorizzato;
-- DNS tradizionale e record `A`, `AAAA`, `CNAME`, `HTTPS`;
-- richieste ICMP;
-- handshake TCP SYN, SYN-ACK e ACK;
-- flag ACK, PSH, FIN e RST;
-- traffico TCP/443 e UDP/443 cifrato;
-- stesso flusso sui lati hotspot e uplink;
-- sostituzione dell’IP tramite NAT;
-- traduzione inversa delle risposte;
-- decremento TTL durante il forwarding;
-- PCAP privato limitato a 20 record e 128 byte per record;
-- lettura del PCAP con AppArmor mantenuto attivo.
+- installazione di Suricata 8.0.3 sull’host Ubuntu, non in Docker;
+- supporto AF_PACKET e Hyperscan;
+- correzione dell’interfaccia predefinita `eth0` inesistente;
+- `HOME_NET` limitato a `10.42.0.0/24`;
+- oltre 52.000 regole caricate senza errori;
+- eventi DNS, TLS, QUIC, HTTP, DHCP, mDNS e flow;
+- avvio e arresto su richiesta tramite systemd;
+- servizio `disabled` al boot;
+- regola ICMP locale innocua e alert ripetibile;
+- azione `allowed`, coerente con IDS passivo;
+- statistiche AF_PACKET e drop finali dello `0,25%`;
+- rotazione reale di `eve.json` in archivio compresso;
+- conservazione prevista di 14 rotazioni.
 
 ## Metodo di lavoro
 
@@ -113,50 +115,61 @@ Una fase viene segnata come completata soltanto dopo una verifica reale. Gli asp
 
 Guide più recenti:
 
-- [`docs/steps/04-dhcp-routing-nat.md`](docs/steps/04-dhcp-routing-nat.md);
 - [`docs/steps/05-firewall-nftables.md`](docs/steps/05-firewall-nftables.md);
-- [`docs/steps/06-cattura-tcpdump.md`](docs/steps/06-cattura-tcpdump.md).
+- [`docs/steps/06-cattura-tcpdump.md`](docs/steps/06-cattura-tcpdump.md);
+- [`docs/steps/07-suricata.md`](docs/steps/07-suricata.md).
 
 ## Report pubblici
 
 Ogni fase completata possiede un solo report principale nella radice di `samples/`.
 
 ```text
-samples/04-dhcp-routing-nat-report.md
 samples/05-firewall-nftables-report.md
 samples/06-cattura-tcpdump-report.md
+samples/07-suricata-report.md
 ```
 
-Il report della fase 6 consolida DNS, ICMP, handshake TCP, NAT, PCAP e AppArmor. I frammenti duplicati sono stati rimossi.
+Il report della fase 7 documenta installazione, AF_PACKET, configurazione, regole, alert, systemd on demand, statistiche e rotazione log.
 
 ## Report privati
 
 `reports/` contiene materiale locale e sensibile ed è esclusa tramite `.gitignore`.
 
-Report privato previsto per la fase 6:
+Report privati recenti:
 
 ```text
 reports/06-cattura-tcpdump-private.md
+reports/07-suricata-private.md
 ```
 
 Verifica:
 
 ```bash
-git check-ignore -v reports/06-cattura-tcpdump-private.md
+git check-ignore -v reports/07-suricata-private.md
 ```
 
-Il PCAP grezzo resta in una directory privata esterna al repository e non viene pubblicato.
+I PCAP e i log integrali non vengono pubblicati.
 
-## Componenti verificati del firewall
+## Componenti verificati
 
 ```text
 configs/nftables/security-gateway-input-filter.nft
 configs/nftables/security-gateway-filter.nft
 configs/systemd/security-gateway-firewall.service
 scripts/security-gateway-firewall
+/etc/suricata/suricata.yaml
+/var/lib/suricata/rules/suricata.rules
+/var/lib/suricata/rules/local.rules
 ```
 
 Il servizio standard `nftables.service` non viene usato perché la configurazione predefinita contiene `flush ruleset`. Il progetto usa un servizio dedicato che gestisce soltanto le proprie tabelle.
+
+Suricata resta disabilitato al boot e viene avviato soltanto quando serve:
+
+```bash
+sudo systemctl start suricata
+sudo systemctl stop suricata
+```
 
 ## Struttura del repository
 
@@ -185,7 +198,7 @@ Il servizio standard `nftables.service` non viene usato perché la configurazion
 
 ## Privacy
 
-Non pubblicare password Wi-Fi, SSID domestici, token, chiavi, MAC, nomi completi `wlx...`, hostname o percorsi personali, IP e porte completi non necessari, query DNS personali, PCAP grezzi, log integrali o traffico appartenente a terzi.
+Non pubblicare password Wi-Fi, SSID domestici, token, chiavi, MAC, nomi completi `wlx...`, hostname o percorsi personali, IP e porte completi non necessari, query DNS personali, PCAP grezzi, log integrali, file `eve.json` completi o traffico appartenente a terzi.
 
 ## Licenza
 
