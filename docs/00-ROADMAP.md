@@ -41,8 +41,8 @@ Internet
 | 4 | [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md) | Verificare DHCP, DNS, forwarding, NAT e Wi-Fi | COMPLETATO |
 | 5 | [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md) | Applicare filtro stateful, log e persistenza | COMPLETATO |
 | 6 | [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md) | Verificare filtri, protocolli, NAT e PCAP | COMPLETATO |
-| 7 | [`steps/07-suricata.md`](steps/07-suricata.md) | Produrre e verificare avvisi IDS | PROSSIMO |
-| 8 | [`steps/08-zeek.md`](steps/08-zeek.md) | Generare log di rete strutturati | DA FARE |
+| 7 | [`steps/07-suricata.md`](steps/07-suricata.md) | Produrre e verificare avvisi IDS | COMPLETATO |
+| 8 | [`steps/08-zeek.md`](steps/08-zeek.md) | Generare log di rete strutturati | PROSSIMO |
 | 9 | [`steps/09-python-log-analysis.md`](steps/09-python-log-analysis.md) | Leggere log e produrre statistiche | DA FARE |
 | 10 | [`steps/10-database-dashboard-docker.md`](steps/10-database-dashboard-docker.md) | Salvare e visualizzare dati | DA FARE |
 | 11 | [`steps/11-test-hardening-backup.md`](steps/11-test-hardening-backup.md) | Test finali, hardening, backup e ripristino | DA FARE |
@@ -168,24 +168,51 @@ Il report privato e il PCAP restano fuori da Git.
 
 ## Fase 7 — Suricata
 
-Passi previsti:
+Completata e verificata il 20 luglio 2026.
 
-- installazione;
-- avvio iniziale in modalità passiva IDS;
-- scelta dell’interfaccia e verifica del percorso;
-- aggiornamento regole;
-- controllo della configurazione;
-- traffico di test autorizzato;
-- lettura di `fast.log`, `eve.json` e statistiche;
-- riduzione dei falsi positivi;
-- conservazione e privacy dei log.
+Sono stati verificati:
+
+- installazione sull’host Ubuntu e non in Docker;
+- Suricata 8.0.3, `suricata-update` e `jq`;
+- supporto AF_PACKET e Hyperscan;
+- diagnosi dell’interfaccia predefinita `eth0` inesistente;
+- `HOME_NET` limitato a `10.42.0.0/24`;
+- interfaccia hotspot configurata in AF_PACKET;
+- oltre 52.000 regole caricate senza errori;
+- test della configurazione con codice di uscita `0`;
+- eventi flow, DNS, TLS, QUIC, HTTP, DHCP, mDNS e fileinfo;
+- servizio avviato su richiesta con stato `active/disabled`;
+- arresto con stato `inactive/disabled`;
+- regola locale ICMP innocua con SID `1000001`;
+- alert controllato con azione `allowed`;
+- statistiche AF_PACKET e drop finali dello `0,25%`;
+- rotazione giornaliera controllata da timer e soglia di 1 MiB;
+- 14 archivi compressi previsti;
+- rotazione reale di `eve.json` in `eve.json.1.gz`.
+
+Report pubblico:
+
+```text
+samples/07-suricata-report.md
+```
+
+Report privato locale:
+
+```text
+reports/07-suricata-private.md
+```
+
+Suricata resta disabilitato al boot e viene avviato soltanto durante le sessioni di laboratorio.
 
 ## Fase 8 — Zeek
 
-- installazione e configurazione;
+- installazione e configurazione sull’host Ubuntu;
+- scelta dell’interfaccia di osservazione;
 - analisi di `conn.log`, `dns.log`, `http.log`, `ssl.log` e `notice.log`;
 - formato TSV o JSON;
-- rotazione e conservazione.
+- confronto con `eve.json` di Suricata;
+- rotazione e conservazione;
+- uso su richiesta senza avvio automatico non necessario.
 
 ## Fase 9 — Python
 
