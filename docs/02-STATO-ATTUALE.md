@@ -1,6 +1,6 @@
 # Stato attuale del progetto
 
-Ultimo aggiornamento operativo: 18 luglio 2026.
+Ultimo aggiornamento operativo: 20 luglio 2026.
 
 ## Obiettivo principale
 
@@ -71,24 +71,18 @@ Completata il 17 luglio 2026.
 
 Risultati:
 
-- inventario delle porte in ascolto;
 - filtro `INPUT` dedicato all’hotspot;
-- DHCP e DNS consentiti;
-- ICMP verso il gateway consentito;
-- mDNS e WS-Discovery bloccati;
-- altri accessi diretti a Ubuntu bloccati;
-- test TCP 631 verso il gateway;
+- DHCP, DNS e ICMP necessari consentiti;
+- mDNS, WS-Discovery e accessi non previsti bloccati;
 - filtro `FORWARD` stateful;
 - traffico valido hotspot→Internet consentito;
 - sole risposte `established,related` consentite verso i client;
-- rete privata libvirt bloccata dall’hotspot con test attivo;
+- rete privata libvirt bloccata dall’hotspot;
 - logging con rate limit;
 - rollback e reload delle sole tabelle del progetto;
 - coesistenza con NetworkManager, Docker e libvirt;
 - script amministrativo e servizio systemd dedicato;
 - persistenza verificata dopo riavvio reale.
-
-Il progetto usa `security-gateway-firewall.service`. Il servizio standard `nftables.service` resta disabilitato perché la configurazione standard contiene `flush ruleset`.
 
 Report:
 
@@ -100,65 +94,86 @@ Completata e verificata il 18 luglio 2026.
 
 Risultati:
 
-- `tcpdump`, libpcap e OpenSSL verificati;
-- filtri BPF applicati a un solo client autorizzato;
-- IP, porte e direzioni interpretati;
-- traffico UDP/443 compatibile con QUIC/HTTP/3;
-- WHOIS usato con limiti di attribuzione dichiarati;
-- DNS tradizionale osservato con record `A`, `AAAA`, `CNAME` e `HTTPS`;
-- tre richieste ICMP trasmesse, senza risposta del telefono;
-- handshake TCP completo SYN, SYN-ACK e ACK;
-- flag ACK, PSH, FIN e RST riconosciuti;
-- dati TCP/443 riconosciuti come cifrati senza decifrarli;
-- stesso flusso UDP/443 osservato simultaneamente prima e dopo il NAT;
-- traduzione inversa delle risposte verificata;
-- decremento TTL durante il forwarding verificato;
-- traffico inoltrato distinto dal traffico locale del gateway;
+- filtri BPF applicati a un client autorizzato;
+- DNS tradizionale con record `A`, `AAAA`, `CNAME` e `HTTPS`;
+- richieste ICMP;
+- handshake TCP completo e principali flag;
+- traffico cifrato riconosciuto senza decifrazione;
+- stesso flusso osservato prima e dopo il NAT;
+- traduzione inversa e decremento TTL;
 - PCAP privato limitato a 20 record e snapshot di 128 byte;
-- formato PCAP 2.4 Linux cooked v2 verificato;
-- permessi finali `600`;
-- profilo AppArmor `tcpdump` mantenuto attivo;
-- creazione e lettura completate tramite standard output/input;
-- nessun PCAP grezzo pubblicato;
-- nessun pacchetto perso dal kernel nelle catture documentate.
+- formato Linux cooked v2 e permessi `600`;
+- AppArmor mantenuto attivo;
+- nessun PCAP grezzo pubblicato.
 
 Guida:
 
 - [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md).
 
-Unico report pubblico principale:
+Report pubblico:
 
 - [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md).
 
-Report privato locale previsto:
+Report privato locale:
 
 ```text
 reports/06-cattura-tcpdump-private.md
 ```
 
-Il report privato e il PCAP non devono essere aggiunti a Git.
+### Fase 7 — Suricata IDS
+
+Completata e verificata il 20 luglio 2026.
+
+Risultati:
+
+- Suricata 8.0.3 installato sull’host Ubuntu, non in Docker;
+- `suricata-update` 1.3.7 e `jq` 1.8.1 installati;
+- supporto AF_PACKET e Hyperscan verificato;
+- errore iniziale causato da `eth0` inesistente diagnosticato;
+- `HOME_NET` impostato a `10.42.0.0/24`;
+- interfaccia hotspot configurata per AF_PACKET;
+- oltre 52.000 regole caricate senza errori;
+- test della configurazione con codice `0`;
+- eventi flow, QUIC, mDNS, DNS, TLS, HTTP, fileinfo e DHCP osservati;
+- alert decoder `SURICATA Ethertype unknown` documentato senza interpretarlo come prova di attacco;
+- servizio avviato su richiesta con stato `active/disabled`;
+- arresto verificato con stato `inactive/disabled`;
+- regola locale ICMP innocua con SID `1000001`;
+- alert `LAB Suricata ICMP test` prodotto con azione `allowed`;
+- prova di circa 62 secondi con drop finali dello `0,25%`;
+- `eve.json`, `fast.log`, `stats.log` e `suricata.log` letti;
+- controllo giornaliero logrotate con soglia di 1 MiB;
+- 14 rotazioni compresse previste;
+- rotazione reale di `eve.json` in `eve.json.1.gz`;
+- Suricata mantenuto disabilitato al boot.
+
+Guida:
+
+- [`steps/07-suricata.md`](steps/07-suricata.md).
+
+Report pubblico:
+
+- [`../samples/07-suricata-report.md`](../samples/07-suricata-report.md).
+
+Report privato locale:
+
+```text
+reports/07-suricata-private.md
+```
+
+Il report privato e i log integrali non devono essere aggiunti a Git.
 
 ## Percorso verificato
 
 ```text
 Client 10.42.0.x
   -> Realtek 10.42.0.1
-  -> filtro INPUT per DHCP/DNS/gateway
-  -> filtro FORWARD stateful
+  -> nftables INPUT/FORWARD
+  -> Suricata AF_PACKET in modalità IDS passiva
   -> NAT/masquerading NetworkManager
   -> MediaTek 192.168.10.x
   -> router 192.168.10.1
   -> Internet
-```
-
-La fase 6 ha abbinato riga per riga lo stesso flusso sui due lati:
-
-```text
-wlx<REDACTED> In  10.42.0.x:PORTA    -> IP_REMOTO:443
-wlp13s0 Out       192.168.10.x:PORTA -> IP_REMOTO:443
-
-wlp13s0 In        IP_REMOTO:443 -> 192.168.10.x:PORTA
-wlx<REDACTED> Out IP_REMOTO:443 -> 10.42.0.x:PORTA
 ```
 
 ## Stato delle fasi
@@ -171,8 +186,8 @@ wlx<REDACTED> Out IP_REMOTO:443 -> 10.42.0.x:PORTA
 | 4. DHCP, routing e NAT | COMPLETATA | DHCP, DNS, forwarding, NAT e WPA2-RSN/CCMP verificati |
 | 5. Firewall nftables | COMPLETATA | INPUT, FORWARD, log, rollback, systemd e persistenza verificati |
 | 6. tcpdump | COMPLETATA | DNS, ICMP, handshake TCP, NAT, PCAP e AppArmor verificati |
-| 7. Suricata | PROSSIMA | Installazione e configurazione iniziale in modalità passiva IDS |
-| 8. Zeek | DA FARE | Non installato o configurato per questa topologia |
+| 7. Suricata | COMPLETATA | IDS passivo, regole, alert controllato, systemd on demand e logrotate verificati |
+| 8. Zeek | PROSSIMA | Installazione e log di rete strutturati |
 | 9. Python | DA FARE | Nessun analizzatore dei log ancora sviluppato |
 | 10. Docker dashboard | DA FARE | Nessuno stack definitivo |
 | 11. Test e hardening | DA FARE | Isolamento client, casi limite, backup e ripristino finale |
@@ -188,48 +203,43 @@ group:    ccmp
 
 Il collegamento radio è protetto da WPA2-RSN/CCMP. Il traffico HTTPS/QUIC resta protetto da TLS a livello applicativo.
 
-## Configurazione firewall persistente
-
-```text
-/etc/security-gateway-firewall/security-gateway-input-filter.nft
-/etc/security-gateway-firewall/security-gateway-filter.nft
-/usr/local/sbin/security-gateway-firewall
-/etc/systemd/system/security-gateway-firewall.service
-```
-
-Stato verificato dopo reboot:
+## Servizi e modalità operative
 
 ```text
 security-gateway-firewall.service: enabled / active (exited)
 nftables.service standard:         disabled / inactive
-INPUT:                              presente
-FORWARD:                            presente
-DHCP e DNS:                         funzionanti
-navigazione:                        funzionante
+Suricata al boot:                   disabled
+Suricata durante il laboratorio:    start/stop manuale
+hotspot:                            avvio manuale
 ```
 
-L’hotspot resta ad avvio manuale perché `connection.autoconnect=no`.
+Comandi Suricata:
+
+```bash
+sudo systemctl start suricata
+sudo systemctl stop suricata
+```
 
 ## Materiale pubblico
 
 Guide più recenti:
 
-- [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md);
 - [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md);
-- [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md).
+- [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md);
+- [`steps/07-suricata.md`](steps/07-suricata.md).
 
 Report principali:
 
-- [`../samples/04-dhcp-routing-nat-report.md`](../samples/04-dhcp-routing-nat-report.md);
 - [`../samples/05-firewall-nftables-report.md`](../samples/05-firewall-nftables-report.md);
-- [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md).
+- [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md);
+- [`../samples/07-suricata-report.md`](../samples/07-suricata-report.md).
 
 ## Vincoli di pubblicazione
 
-Non pubblicare password Wi-Fi, SSID domestici, MAC reali, nome completo `wlx...`, hostname o percorsi personali, IP e porte completi non necessari, PCAP grezzi, query DNS personali, log integrali o screenshot originali.
+Non pubblicare password Wi-Fi, SSID domestici, MAC reali, nome completo `wlx...`, hostname o percorsi personali, IP e porte completi non necessari, PCAP grezzi, query DNS personali, log integrali o file `eve.json` completi.
 
 Gli output completi restano in `reports/`, esclusa da Git. I PCAP restano in directory private esterne al repository.
 
 ## Prossima azione
 
-Passare alla fase 7 soltanto dopo aver copiato il report privato della fase 6 in `reports/` e verificato che sia ignorato da Git. La fase 7 installerà Suricata inizialmente in modalità passiva IDS, senza bloccare traffico.
+Passare alla fase 8: installare Zeek sull’host Ubuntu, produrre log strutturati e confrontarli con gli eventi Suricata.
