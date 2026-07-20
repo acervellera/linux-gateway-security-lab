@@ -12,6 +12,7 @@ Telefono / dispositivo autorizzato
   -> Realtek USB AP
   -> Ubuntu gateway
   -> nftables INPUT e FORWARD
+  -> Suricata AF_PACKET in modalità IDS passiva
   -> NAT/masquerading
   -> MediaTek wlp13s0
   -> router
@@ -41,18 +42,7 @@ Realtek in modalità AP, client reali associati, indirizzi `10.42.0.x`, gateway 
 
 Completata il 16 luglio 2026.
 
-Verificati:
-
-- `dnsmasq` su DHCP e DNS;
-- sequenza DHCP completa;
-- `net.ipv4.ip_forward=1`;
-- masquerading per `10.42.0.0/24`;
-- traffico sui lati Realtek e MediaTek;
-- DNS classico;
-- TCP 443 e UDP 443;
-- WPA2-RSN con CCMP/AES.
-
-Percorso:
+Verificati `dnsmasq`, sequenza DHCP, forwarding IPv4, masquerading, traffico sui lati Realtek e MediaTek, DNS classico, TCP/443, UDP/443 e WPA2-RSN con CCMP/AES.
 
 ```text
 10.42.0.x:porta -> NAT -> 192.168.10.x:porta -> server:443
@@ -87,79 +77,164 @@ Installati script, configurazioni e servizio `security-gateway-firewall.service`
 
 Completata e verificata il 18 luglio 2026.
 
-### Catture limitate
+Sono stati verificati:
 
-Sono stati usati filtri BPF con limiti di pacchetti, evitando catture indefinite. Nelle catture documentate il kernel ha sempre riportato zero pacchetti persi.
+- filtri BPF limitati;
+- DNS con record `A`, `AAAA`, `CNAME` e `HTTPS`;
+- richieste ICMP;
+- handshake TCP completo;
+- flag ACK, PSH, FIN e RST;
+- traffico cifrato;
+- NAT riga per riga sui due lati;
+- decremento TTL;
+- PCAP privato di 20 record e snapshot 128 byte;
+- formato Linux cooked v2;
+- permessi `600`;
+- AppArmor mantenuto attivo.
 
-### DNS
-
-Osservati:
-
-- richieste e risposte sulla porta 53;
-- record `A`, `AAAA`, `CNAME` e `HTTPS`;
-- nomi Apple/iCloud generati dal dispositivo;
-- differenza tra DNS visibile e contenuto HTTPS cifrato.
-
-### ICMP
-
-Il gateway ha inviato tre richieste Echo al telefono. Il telefono non ha risposto. La cattura ha dimostrato la trasmissione sulla Realtek senza attribuire automaticamente l’assenza di risposta a un guasto della rete.
-
-### TCP
-
-Riconosciuto un handshake completo:
-
-```text
-SYN -> SYN-ACK -> ACK
-```
-
-Osservati anche ACK cumulativi e flag PSH, FIN e RST. Il traffico sulla porta 443 è rimasto cifrato.
-
-### NAT riga per riga
-
-La cattura `-i any` ha mostrato lo stesso datagramma sui due lati:
-
-```text
-wlx<REDACTED> In  10.42.0.x:PORTA    -> IP_REMOTO:443
-wlp13s0 Out       192.168.10.x:PORTA -> IP_REMOTO:443
-```
-
-Risposta:
-
-```text
-wlp13s0 In        IP_REMOTO:443 -> 192.168.10.x:PORTA
-wlx<REDACTED> Out IP_REMOTO:443 -> 10.42.0.x:PORTA
-```
-
-Il TTL è diminuito di uno durante il forwarding.
-
-### PCAP privato
-
-Creato un file PCAP con:
-
-```text
-20 record
-snapshot 128 byte
-formato PCAP 2.4
-Linux cooked v2
-permessi 600
-dimensione circa 2,8 KiB
-```
-
-AppArmor ha bloccato creazione e lettura diretta da parte di `tcpdump`. La protezione non è stata disabilitata: i dati sono stati trasferiti tramite standard output e standard input.
-
-### Documentazione
-
-Unico report pubblico:
+Report pubblico:
 
 - [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md).
 
-Report privato locale:
+Report privato:
 
 ```text
 reports/06-cattura-tcpdump-private.md
 ```
 
-Il report privato e il PCAP non devono essere aggiunti a Git.
+## Fase 7 completata — Suricata IDS
+
+Completata e verificata il 20 luglio 2026.
+
+### Installazione e build
+
+```text
+Suricata:         8.0.3 RELEASE
+suricata-update:  1.3.7
+jq:               1.8.1
+AF_PACKET:        yes
+Hyperscan:        yes
+systemd:          yes
+```
+
+Suricata è installato sull’host Ubuntu, non in Docker.
+
+### Problemi diagnosticati
+
+La configurazione predefinita usava `eth0`, interfaccia inesistente sul gateway. Sono state inoltre installate le regole inizialmente mancanti.
+
+Configurazione finale anonimizzata:
+
+```yaml
+HOME_NET: "[10.42.0.0/24]"
+
+af-packet:
+  - interface: wlx<REDACTED>
+```
+
+### Regole
+
+Il test finale ha caricato:
+
+```text
+2 file di regole
+52044 regole corrette
+0 regole fallite
+52049 firme elaborate
+```
+
+### Eventi osservati
+
+Sono stati osservati eventi:
+
+```text
+flow, quic, mdns, dns, tls, http, fileinfo, dhcp, stats, alert
+```
+
+È stato documentato un alert decoder `SURICATA Ethertype unknown` senza considerarlo automaticamente un attacco.
+
+### Avvio su richiesta
+
+Suricata resta disabilitato al boot.
+
+Durante l’uso:
+
+```text
+is-active:  active
+is-enabled: disabled
+```
+
+Dopo l’arresto:
+
+```text
+is-active:  inactive
+is-enabled: disabled
+```
+
+### Alert locale controllato
+
+Regola:
+
+```text
+alert icmp $HOME_NET any -> $HOME_NET any (msg:"LAB Suricata ICMP test"; itype:8; sid:1000001; rev:1;)
+```
+
+Un singolo ping broadcast ha prodotto l’alert atteso con:
+
+```text
+proto:     ICMP
+signature: LAB Suricata ICMP test
+action:    allowed
+```
+
+### Statistiche
+
+Prova systemd di circa 62 secondi:
+
+```text
+packets:          145724
+drops:            367
+drop percentage:  0.25%
+invalid checksum: 0
+alerts:           1
+```
+
+### Rotazione log
+
+Verificati:
+
+```text
+controllo giornaliero tramite logrotate.timer
+soglia 1 MiB
+14 rotazioni
+compressione gzip
+copytruncate
+```
+
+Il blocco `postrotate` invia HUP soltanto se Suricata è attivo.
+
+La rotazione reale ha creato:
+
+```text
+eve.json       nuovo file corrente
+eve.json.1.gz  archivio compresso
+```
+
+### Documentazione
+
+Guida:
+
+- [`steps/07-suricata.md`](steps/07-suricata.md).
+
+Report pubblico:
+
+- [`../samples/07-suricata-report.md`](../samples/07-suricata-report.md).
+
+Report privato locale:
+
+```text
+reports/07-suricata-private.md
+```
 
 ## Stato corrente
 
@@ -171,23 +246,19 @@ Il report privato e il PCAP non devono essere aggiunti a Git.
 | 4. DHCP, routing e NAT | COMPLETATA |
 | 5. Firewall nftables | COMPLETATA |
 | 6. tcpdump | COMPLETATA |
-| 7. Suricata | PROSSIMA |
-| 8. Zeek | DA FARE |
+| 7. Suricata | COMPLETATA |
+| 8. Zeek | PROSSIMA |
 | 9. Python | DA FARE |
 | 10. Docker | DA FARE |
 | 11. Test e hardening | DA FARE |
 
 ## Prossimi passi immediati
 
-Prima della fase 7:
-
-1. copiare il report privato in `reports/06-cattura-tcpdump-private.md`;
+1. copiare il report privato in `reports/07-suricata-private.md`;
 2. applicare permessi `600`;
 3. verificare `git check-ignore`;
-4. controllare che non esistano PCAP tracciati;
-5. eseguire `git status`.
-
-Poi seguire [`steps/07-suricata.md`](steps/07-suricata.md) iniziando in modalità passiva IDS, senza bloccare il traffico.
+4. eseguire `git fetch` e `git pull --ff-only` per scaricare gli aggiornamenti pubblici;
+5. passare a [`steps/08-zeek.md`](steps/08-zeek.md).
 
 ## Report pubblici e privati
 
@@ -205,7 +276,7 @@ Nella cartella locale `reports/`:
 - nomi reali delle interfacce;
 - IP e porte reali;
 - query DNS osservate;
-- log AppArmor;
+- log operativi;
 - report personali.
 
-Non pubblicare password, token, MAC, PCAP grezzi o traffico di terzi.
+Non pubblicare password, token, MAC, PCAP grezzi, log integrali o traffico di terzi.
