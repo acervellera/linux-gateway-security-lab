@@ -249,6 +249,33 @@ eve.json.1.gz  archivio compresso, circa 115 KiB
 
 Durante e dopo la rotazione Suricata era `inactive` e `disabled`.
 
+### Integrità dell’archivio
+
+L’archivio compresso è stato controllato con:
+
+```bash
+sudo gzip -t /var/log/suricata/eve.json.1.gz
+```
+
+Risultato:
+
+```text
+Codice controllo gzip: 0
+Archivio eve.json.1.gz integro
+```
+
+È stata verificata anche la validità degli eventi JSON senza estrarre l’archivio su disco:
+
+```bash
+sudo zcat /var/log/suricata/eve.json.1.gz | jq -e . >/dev/null
+```
+
+Risultato:
+
+```text
+Tutti gli eventi JSON sono validi
+```
+
 ## Privacy
 
 Non sono pubblicati:
@@ -273,7 +300,8 @@ Non sono pubblicati:
 - avvio e arresto on demand verificati;
 - avvio automatico disabilitato;
 - drop misurati e documentati;
-- rotazione e compressione dei log verificate.
+- rotazione e compressione dei log verificate;
+- integrità gzip e validità JSON dell’archivio verificate.
 
 ## Prossimo passo
 
