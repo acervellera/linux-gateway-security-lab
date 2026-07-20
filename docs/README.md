@@ -29,14 +29,15 @@ Fase 3  hotspot Realtek                 COMPLETATA
 Fase 4  DHCP, routing e NAT             COMPLETATA
 Fase 5  firewall nftables               COMPLETATA
 Fase 6  cattura tcpdump                 COMPLETATA
-Fase 7  Suricata                        PROSSIMA
+Fase 7  Suricata IDS                    COMPLETATA
+Fase 8  Zeek                            PROSSIMA
 ```
 
 Guide delle fasi più recenti:
 
-- [`steps/04-dhcp-routing-nat.md`](steps/04-dhcp-routing-nat.md);
 - [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md);
-- [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md).
+- [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md);
+- [`steps/07-suricata.md`](steps/07-suricata.md).
 
 ## Architettura sintetica
 
@@ -45,12 +46,13 @@ Client autorizzato
   -> Realtek USB AP
   -> Ubuntu gateway
   -> nftables INPUT/FORWARD
+  -> Suricata AF_PACKET in modalità IDS passiva
   -> NAT/masquerading
   -> MediaTek uplink
   -> Internet
 ```
 
-La fase 6 ha verificato il percorso con catture simultanee prima e dopo il NAT, insieme a DNS, ICMP, handshake TCP, traffico cifrato e PCAP limitato.
+La fase 6 ha verificato il percorso prima e dopo il NAT. La fase 7 ha verificato eventi IDS, regole, alert controllato, avvio su richiesta e rotazione dei log.
 
 ## Configurazioni e script verificati
 
@@ -59,7 +61,12 @@ La fase 6 ha verificato il percorso con catture simultanee prima e dopo il NAT, 
 ../configs/nftables/security-gateway-filter.nft
 ../configs/systemd/security-gateway-firewall.service
 ../scripts/security-gateway-firewall
+/etc/suricata/suricata.yaml
+/var/lib/suricata/rules/suricata.rules
+/var/lib/suricata/rules/local.rules
 ```
+
+I file sotto `/etc` e `/var/lib` sono configurazioni locali del gateway e non vengono pubblicati integralmente quando contengono valori sensibili.
 
 ## Sample pubblici
 
@@ -67,9 +74,9 @@ La cartella [`../samples`](../samples) contiene un report principale anonimizzat
 
 Report più recenti:
 
-- [`../samples/04-dhcp-routing-nat-report.md`](../samples/04-dhcp-routing-nat-report.md);
 - [`../samples/05-firewall-nftables-report.md`](../samples/05-firewall-nftables-report.md);
-- [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md).
+- [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md);
+- [`../samples/07-suricata-report.md`](../samples/07-suricata-report.md).
 
 Output supplementare della fase 4:
 
@@ -87,19 +94,21 @@ reports/
 
 è ignorata da Git e può contenere output integrali, nomi reali delle interfacce, percorsi locali e report personali.
 
-Report privato della fase 6:
+Report privati recenti:
 
 ```text
 reports/06-cattura-tcpdump-private.md
+reports/07-suricata-private.md
 ```
 
 Verifica obbligatoria:
 
 ```bash
-git check-ignore -v reports/06-cattura-tcpdump-private.md
+git check-ignore -v reports/07-suricata-private.md
+git status --short
 ```
 
-Il PCAP grezzo deve restare in una directory privata esterna al repository.
+Il report privato non deve apparire tra i file da committare. I PCAP grezzi e i log integrali devono restare in aree private.
 
 ## Regola di aggiornamento
 
