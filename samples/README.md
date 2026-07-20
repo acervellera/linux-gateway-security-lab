@@ -13,6 +13,7 @@ Ogni fase completata possiede un solo report pubblico principale nella radice di
 04-dhcp-routing-nat-report.md
 05-firewall-nftables-report.md
 06-cattura-tcpdump-report.md
+07-suricata-report.md
 ```
 
 Non viene usata una sottocartella `samples/reports/`. Gli output supplementari sono ammessi soltanto quando aggiungono materiale utile senza duplicare il report principale.
@@ -44,6 +45,23 @@ Non viene usata una sottocartella `samples/reports/`. Gli output supplementari s
 - privacy e conservazione dei dati.
 
 I precedenti estratti separati della fase 6 sono stati incorporati nel report principale e rimossi. Il PCAP grezzo non è pubblicato.
+
+## Fase 7
+
+[`07-suricata-report.md`](07-suricata-report.md) documenta:
+
+- installazione di Suricata sull’host Ubuntu e non in Docker;
+- cattura AF_PACKET sull’interfaccia hotspot;
+- correzione dell’interfaccia predefinita `eth0`;
+- `HOME_NET` limitato a `10.42.0.0/24`;
+- caricamento delle regole senza errori;
+- eventi DNS, TLS, QUIC, HTTP, DHCP, mDNS e flow;
+- avvio e arresto su richiesta con servizio disabilitato al boot;
+- regola locale ICMP innocua e alert ripetibile;
+- statistiche di cattura e drop;
+- rotazione reale di `eve.json` e conservazione compressa.
+
+Il file completo `eve.json`, i log integrali e i valori locali sensibili non sono pubblicati.
 
 ## Contenuti ammessi
 
