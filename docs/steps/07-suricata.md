@@ -3,28 +3,40 @@
 ## Stato
 
 ```text
-IN CORSO — installazione, configurazione e cattura manuale verificate il 18 luglio 2026
+COMPLETATA E VERIFICATA — 20 luglio 2026
 ```
 
-La prova di avvio e arresto tramite `systemd` su richiesta non è stata ancora eseguita. Suricata non deve essere abilitato automaticamente all'avvio del gateway.
+Suricata è stato installato e configurato sull’host Ubuntu gateway in modalità IDS passiva. Sono stati verificati cattura AF_PACKET, regole, log JSON, avvio e arresto su richiesta, alert controllato e rotazione reale dei log.
 
-## Obiettivo
+Suricata resta disabilitato all’avvio del sistema e viene attivato soltanto durante le sessioni di laboratorio.
 
-Installare Suricata sul gateway Ubuntu, osservare il traffico del laboratorio in modalità IDS passiva e produrre avvisi e log JSON utilizzabili successivamente da Python.
+## Obiettivo raggiunto
 
-## Ruolo di Suricata
+Il gateway osserva il traffico della rete autorizzata `10.42.0.0/24` e produce eventi strutturati utilizzabili successivamente da Python.
 
-Suricata è un motore IDS/IPS e di monitoraggio di rete. In questa fase è usato come IDS passivo:
+```text
+client autorizzato
+        |
+        v
+hotspot Realtek
+        |
+        +--> Suricata IDS passivo
+        |
+        v
+nftables, routing, NAT e uplink
+```
+
+Suricata:
 
 ```text
 osserva -> analizza -> registra -> avvisa
 ```
 
-Non blocca automaticamente il traffico. Gli eventi rilevati durante questa fase hanno quindi azione `allowed`.
+Non blocca automaticamente il traffico. Gli alert verificati hanno azione `allowed`.
 
 ## Collocazione architetturale
 
-Suricata è installato direttamente sull'host Ubuntu gateway, non in Docker.
+Suricata è installato direttamente sull’host Ubuntu, non in Docker.
 
 ```text
 Ubuntu host
@@ -34,9 +46,9 @@ Docker
     importazione dati, database, API e dashboard
 ```
 
-Questa separazione permette a Suricata di osservare direttamente l'interfaccia fisica tramite AF_PACKET senza usare container privilegiati o `network_mode: host`.
+Questa separazione permette l’accesso diretto all’interfaccia fisica tramite AF_PACKET senza usare container privilegiati o `network_mode: host`.
 
-## Ambiente verificato
+## Ambiente anonimizzato
 
 ```text
 Sistema:       Ubuntu 26.04 LTS
@@ -46,15 +58,15 @@ LAB_SUBNET:    10.42.0.0/24
 GATEWAY_IP:    10.42.0.1
 AP_IF:         wlx<REDACTED>
 UPLINK_IF:     wlp13s0
-Spazio libero: circa 741 GiB
 Orologio:      sincronizzato tramite NTP
+Spazio libero: circa 741 GiB
 ```
 
-Il nome completo dell'interfaccia hotspot resta nei dati locali e non viene pubblicato.
+Il nome completo dell’interfaccia USB, che incorpora un indirizzo MAC, resta soltanto nel report privato locale.
 
 ## Pacchetti installati
 
-Sono stati usati i pacchetti dei repository Ubuntu configurati, senza aggiungere PPA esterni:
+Sono stati usati i repository Ubuntu già configurati, senza PPA esterni.
 
 ```text
 Suricata:         8.0.3 RELEASE
@@ -62,7 +74,14 @@ suricata-update:  1.3.7
 jq:               1.8.1
 ```
 
-Nota: sulla versione installata l'opzione corretta per mostrare la versione è:
+Comandi principali:
+
+```bash
+sudo apt update
+sudo apt install suricata suricata-update jq
+```
+
+Sulla versione installata il comando corretto per la versione è:
 
 ```bash
 suricata -V
@@ -93,22 +112,16 @@ Python support:     yes
 
 Per questa fase è stata scelta la cattura AF_PACKET.
 
-## Primo avvio automatico fallito
+## Primo avvio fallito e diagnosi
 
-Durante l'installazione il pacchetto ha tentato di avviare il servizio con:
-
-```text
-/usr/bin/suricata -D --af-packet -c /etc/suricata/suricata.yaml
-```
-
-La configurazione predefinita indicava:
+Durante l’installazione il servizio ha tentato di usare la configurazione predefinita:
 
 ```yaml
 af-packet:
   - interface: eth0
 ```
 
-Sul gateway non esiste alcuna interfaccia `eth0`. Il log ha quindi mostrato:
+Sul gateway non esiste `eth0`. Il log ha quindi mostrato:
 
 ```text
 af-packet: eth0: failed to find interface: No such device
@@ -116,7 +129,9 @@ af-packet: eth0: failed to init socket for interface
 thread "W#01-eth0" failed to start
 ```
 
-Systemd ha riprovato più volte e infine ha marcato il servizio come `failed`. Il problema non riguardava routing, firewall o hotspot: era esclusivamente il nome errato dell'interfaccia nella configurazione predefinita.
+Systemd ha riprovato più volte e ha marcato il servizio come `failed`.
+
+La causa era esclusivamente il nome errato dell’interfaccia nella configurazione predefinita; routing, firewall e hotspot non erano coinvolti.
 
 ## Regole inizialmente mancanti
 
@@ -127,14 +142,27 @@ No rule files match the pattern /var/lib/suricata/rules/suricata.rules
 1 rule files specified, but no rules were loaded
 ```
 
-Le regole sono state successivamente installate e verificate. Il test finale ha caricato:
+Le regole sono state installate con:
+
+```bash
+sudo suricata-update
+```
+
+File verificato:
 
 ```text
-1 file di regole elaborato
-52043 regole caricate correttamente
+/var/lib/suricata/rules/suricata.rules
+dimensione osservata: circa 43 MiB
+```
+
+Con la regola locale attiva, il test finale ha elaborato:
+
+```text
+2 file di regole
+52044 regole caricate correttamente
 0 regole fallite
 0 regole saltate
-52048 firme elaborate
+52049 firme elaborate
 ```
 
 Ripartizione osservata:
@@ -146,58 +174,56 @@ Ripartizione osservata:
 110 eventi decoder
 ```
 
-## Backup e modifica della configurazione
+## Backup e configurazione
 
-Prima della modifica è stato creato un backup con `cp -a`, preservando permessi, proprietario e timestamp.
-
-Sono state cambiate soltanto due impostazioni operative.
+Prima delle modifiche sono stati creati backup con `cp -a`, preservando permessi, proprietario e timestamp.
 
 ### HOME_NET
 
-Configurazione originale:
+Valore originale:
 
 ```yaml
 HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
 ```
 
-Configurazione del laboratorio:
+Valore verificato:
 
 ```yaml
 HOME_NET: "[10.42.0.0/24]"
 ```
 
-Questo evita di considerare interne tutte le reti private e limita `HOME_NET` alla sola subnet autorizzata del laboratorio.
+In questo modo soltanto la subnet autorizzata del laboratorio viene considerata interna.
 
 ### Interfaccia AF_PACKET
 
-Configurazione originale:
+Valore originale:
 
 ```yaml
 af-packet:
   - interface: eth0
 ```
 
-Configurazione locale verificata:
+Valore locale verificato:
 
 ```yaml
 af-packet:
   - interface: wlx<REDACTED>
 ```
 
-La modifica è stata eseguita con uno script Python prudente che:
+La modifica è stata applicata con uno script Python prudente che:
 
 - legge il file tramite `pathlib.Path`;
 - individua la sezione `af-packet`;
-- modifica soltanto la riga dell'interfaccia in quella sezione;
-- controlla che `HOME_NET` sia presente una sola volta;
-- interrompe l'operazione se il file non corrisponde alla struttura attesa;
-- scrive il file solo dopo il superamento di tutti i controlli.
+- sostituisce solo la riga prevista;
+- verifica che `HOME_NET` corrisponda alla struttura attesa;
+- interrompe l’operazione in caso di ambiguità;
+- scrive il file soltanto dopo tutti i controlli.
 
-Il primo script più semplice si era fermato correttamente perché trovava tre riferimenti a `eth0` nel file. Nessuna sostituzione indiscriminata è stata applicata.
+Un primo script più semplice si era fermato correttamente perché nel file erano presenti tre riferimenti a `eth0`. Nessuna sostituzione indiscriminata è stata applicata.
 
-## Test della configurazione
+## Verifica della configurazione
 
-Il comando verificato è:
+Comando:
 
 ```bash
 sudo suricata \
@@ -212,17 +238,11 @@ Configuration provided was successfully loaded. Exiting.
 Codice di uscita: 0
 ```
 
-Il test ha confermato contemporaneamente:
+Il test ha verificato sintassi YAML, variabili di rete, file delle regole e caricamento delle firme.
 
-- sintassi YAML valida;
-- `HOME_NET` valido;
-- file delle regole presente;
-- tutte le regole caricate senza errori;
-- configurazione AF_PACKET leggibile.
+## Prima esecuzione in primo piano
 
-## Prima esecuzione manuale
-
-Suricata è stato eseguito in primo piano, senza demone e senza abilitazione automatica:
+Suricata è stato eseguito senza demone:
 
 ```bash
 sudo suricata \
@@ -230,12 +250,6 @@ sudo suricata \
     -c /etc/suricata/suricata.yaml \
     -l /var/log/suricata \
     -v
-```
-
-L'interfaccia era attiva:
-
-```text
-AP_IF  UP  10.42.0.1/24
 ```
 
 Il log ha confermato:
@@ -247,18 +261,18 @@ MTU 1500
 Engine started
 ```
 
-La prova è durata circa 36 secondi ed è stata fermata in modo controllato con `Ctrl+C`:
+La prova è stata terminata con `Ctrl+C`:
 
 ```text
 Signal Received. Stopping engine.
 time elapsed 35.857s
 ```
 
-Dopo l'arresto non risultavano processi Suricata attivi.
+Dopo l’arresto non risultavano processi Suricata attivi.
 
-## Eventi osservati in `eve.json`
+## Eventi osservati in eve.json
 
-Durante la prova con un client autorizzato collegato all'hotspot sono stati registrati:
+Durante una prova con client autorizzato sono stati osservati:
 
 ```text
 45 flow
@@ -275,73 +289,166 @@ Durante la prova con un client autorizzato collegato all'hotspot sono stati regi
 
 Interpretazione:
 
-- `flow`: connessioni e flussi osservati;
+- `flow`: connessioni e flussi;
 - `quic`: traffico cifrato moderno, normalmente UDP/443;
 - `mdns`: scoperta locale di dispositivi e servizi;
 - `dns`: domande e risposte DNS;
-- `tls`: sessioni cifrate HTTPS;
+- `tls`: sessioni HTTPS cifrate;
 - `http`: traffico HTTP non cifrato;
-- `fileinfo`: metadati di un contenuto osservato;
+- `fileinfo`: metadati di contenuti osservati;
 - `dhcp`: configurazione di rete del client;
 - `stats`: statistiche interne;
 - `alert`: evento attivato da una firma.
 
-La predominanza di TLS e QUIC rispetto a HTTP è coerente con il traffico web moderno cifrato.
+La predominanza di TLS e QUIC rispetto a HTTP è coerente con il traffico web moderno.
 
-## Alert osservato
+## Alert decoder osservato
 
-L'unico alert registrato è stato:
+Durante la prima prova è comparso:
 
 ```text
-Signature:  SURICATA Ethertype unknown
-SID:        2200121
-Categoria:  Generic Protocol Command Decode
-Severità:   3
-Azione:     allowed
+Signature:   SURICATA Ethertype unknown
+SID:         2200121
+Categoria:   Generic Protocol Command Decode
+Severità:    3
+Azione:      allowed
 Interfaccia: AP_IF
 ```
 
-I campi IP e porte erano assenti perché l'evento riguarda un frame Ethernet non classificato prima dell'analisi IP:
+I campi IP e porte erano assenti perché l’evento riguardava un frame Ethernet broadcast non classificato prima dell’analisi IP.
+
+L’evento è documentato come anomalia di decodifica o protocollo locale, non come prova di attacco. Non è stata applicata suppression.
+
+## Modalità operativa scelta
+
+Suricata non resta sempre attivo.
 
 ```text
-flow_id:   null
-src_ip:    null
-dest_ip:   null
-proto:     null
+normalmente:            spento
+durante il laboratorio: avvio manuale
+fine laboratorio:       arresto controllato
+avvio al boot:          disabilitato
 ```
 
-Il frame era broadcast. I dati Ethernet grezzi e gli indirizzi MAC non vengono pubblicati.
+Comandi:
 
-Questo evento viene documentato come possibile anomalia di decodifica o protocollo locale, non come prova di attacco. Non è stato ancora applicato alcun tuning o suppression.
+```bash
+sudo systemctl start suricata
+sudo systemctl stop suricata
+```
 
-## Statistiche di cattura
-
-L'ultimo evento `stats` di `eve.json` mostrava:
+La prova reale ha confermato durante l’esecuzione:
 
 ```text
-kernel_packets:  4784
-kernel_drops:    1
+systemctl is-active suricata  -> active
+systemctl is-enabled suricata -> disabled
+```
+
+Dopo l’arresto:
+
+```text
+systemctl is-active suricata  -> inactive
+systemctl is-enabled suricata -> disabled
+```
+
+Fermare Suricata non interrompe hotspot, routing, NAT o accesso Internet.
+
+## Regola locale controllata
+
+È stato creato:
+
+```text
+/var/lib/suricata/rules/local.rules
+```
+
+Regola:
+
+```text
+alert icmp $HOME_NET any -> $HOME_NET any (msg:"LAB Suricata ICMP test"; itype:8; sid:1000001; rev:1;)
+```
+
+Significato:
+
+- `alert`: genera un avviso senza bloccare;
+- `icmp`: limita la regola a ICMP;
+- `$HOME_NET -> $HOME_NET`: traffico interno al laboratorio;
+- `itype:8`: ICMP Echo Request;
+- `sid:1000001`: identificatore locale;
+- `rev:1`: prima revisione.
+
+La configurazione carica:
+
+```yaml
+rule-files:
+  - suricata.rules
+  - local.rules
+```
+
+## Alert intenzionale e ripetibile
+
+È stato inviato un solo ping broadcast nella rete del laboratorio:
+
+```bash
+sudo ping \
+    -b \
+    -c 1 \
+    -I "$AP_IF" \
+    10.42.0.255
+```
+
+L’assenza di risposte era prevista e non rappresentava un errore.
+
+`fast.log` ha registrato:
+
+```text
+[1:1000001:1] LAB Suricata ICMP test
+{ICMP} 10.42.0.1 -> 10.42.0.255
+```
+
+Estratto anonimizzato di `eve.json`:
+
+```json
+{
+  "event_type": "alert",
+  "proto": "ICMP",
+  "signature": "LAB Suricata ICMP test",
+  "signature_id": 1000001,
+  "severity": 3,
+  "action": "allowed"
+}
+```
+
+`allowed` conferma che Suricata è rimasto in modalità IDS passiva.
+
+## Statistiche della prova systemd
+
+La sessione con regola locale è durata circa 62 secondi.
+
+Ultimo evento periodico `stats`:
+
+```text
+kernel_packets:  145344
+kernel_drops:    9
 errors:          0
-decoder_packets: 4783
+decoder_packets: 145331
+alerts:          1
 poll_errors:     0
 send_errors:     0
 ```
 
-Il riepilogo operativo alla chiusura mostrava:
+Riepilogo AF_PACKET alla chiusura:
 
 ```text
-packets:          4790
-drops:            2
-drop percentage:  0.04%
+packets:          145724
+drops:            367
+drop percentage:  0.25%
 invalid checksum: 0
 alerts:           1
 ```
 
-La differenza tra i contatori dipende dal momento in cui sono stati registrati gli eventi `stats` rispetto alla chiusura finale. Una perdita dello `0,04%` in questa breve prova di avvio e arresto non è stata considerata anomala, ma dovrà essere ricontrollata in prove più lunghe.
+La differenza dipende dal momento in cui viene emesso l’evento periodico rispetto al riepilogo finale. La perdita finale dello `0,25%` è stata registrata e non è stata considerata anomala per questa prova breve; non è stato applicato tuning preventivo.
 
 ## Log prodotti
-
-Sono stati creati e letti:
 
 ```text
 /var/log/suricata/eve.json
@@ -350,7 +457,10 @@ Sono stati creati e letti:
 /var/log/suricata/suricata.log
 ```
 
-`eve.json` contiene gli eventi JSON strutturati. `fast.log` conteneva il riepilogo testuale dell'unico alert. `suricata.log` ha documentato caricamento delle regole, avvio del motore, thread, arresto e statistiche finali.
+- `eve.json`: eventi JSON strutturati;
+- `fast.log`: riepilogo testuale degli alert;
+- `stats.log`: statistiche del motore;
+- `suricata.log`: messaggi operativi.
 
 ## Rotazione dei log
 
@@ -360,126 +470,168 @@ Il pacchetto Ubuntu ha installato:
 /etc/logrotate.d/suricata
 ```
 
-Configurazione osservata:
+La politica verificata è:
 
 ```text
-rotate 14
-missingok
-compress
-copytruncate
-sharedscripts
-postrotate: invio di SIGHUP a Suricata
+controllo:       giornaliero tramite logrotate.timer
+soglia:          1 MiB per file
+copie:           14
+compressione:    gzip
+metodo:          copytruncate
+file:            /var/log/suricata/*.log e *.json
 ```
 
-`rotate 14` indica la conservazione di quattordici rotazioni. La frequenza effettiva dipende dalla configurazione globale di logrotate e deve ancora essere verificata e documentata prima di considerare completata la politica di conservazione.
+La configurazione globale contiene `weekly`, ma la regola Suricata usa una soglia di dimensione. Il timer systemd esegue il controllo giornalmente e ruota soltanto i file che superano 1 MiB.
 
-## Modalità operativa scelta
+### Postrotate compatibile con uso on demand
 
-Suricata non resterà sempre attivo. La modalità scelta per il laboratorio è su richiesta:
+Il blocco originale tentava di leggere il PID anche con Suricata spento. È stato sostituito con:
+
+```conf
+postrotate
+    if /usr/bin/systemctl --quiet is-active suricata.service; then
+        /usr/bin/systemctl kill --signal=HUP --kill-who=main suricata.service
+    fi
+endscript
+```
+
+Il segnale HUP viene quindi inviato soltanto se il servizio è attivo.
+
+### Rotazione reale verificata
+
+Con Suricata fermo, `logrotate -v` ha ruotato `eve.json` perché aveva superato 1 MiB.
+
+Risultato:
 
 ```text
-normalmente:          spento
-durante il laboratorio: avvio manuale
-fine laboratorio:     arresto controllato
-avvio al boot:        disabilitato
+eve.json       nuovo file corrente, 0 byte
+eve.json.1.gz  archivio compresso, circa 115 KiB
+Suricata       inactive
+avvio al boot  disabled
 ```
 
-Possibili modalità:
+La simulazione precedente con `logrotate -d` non aveva modificato i file.
 
-### Primo piano, utile per studio e diagnosi
+## Comandi operativi
+
+### Avvio della sessione
 
 ```bash
-sudo suricata --af-packet -c /etc/suricata/suricata.yaml -l /var/log/suricata
-```
-
-Arresto:
-
-```text
-Ctrl+C
-```
-
-### Servizio avviato soltanto quando serve
-
-```bash
+sudo nmcli connection up security-gateway-ap
 sudo systemctl start suricata
-sudo systemctl stop suricata
+systemctl is-active suricata
+systemctl is-enabled suricata
 ```
 
-Il servizio deve restare `disabled`, così l'avvio manuale non implica l'avvio automatico al boot.
+Risultato atteso:
+
+```text
+active
+disabled
+```
+
+### Fine della sessione
+
+```bash
+sudo systemctl stop suricata
+systemctl is-active suricata
+systemctl is-enabled suricata
+```
+
+Risultato atteso:
+
+```text
+inactive
+disabled
+```
+
+### Controllo eventi
+
+```bash
+sudo jq -r '.event_type' \
+    /var/log/suricata/eve.json |
+    sort |
+    uniq -c |
+    sort -nr
+```
+
+### Controllo alert
+
+```bash
+sudo tail -n 30 /var/log/suricata/fast.log
+```
+
+### Controllo configurazione
+
+```bash
+sudo suricata -T -c /etc/suricata/suricata.yaml
+```
 
 ## Attività completate
 
-- [x] installare Suricata, `suricata-update` e `jq`;
-- [x] registrare versione e build info;
-- [x] confermare l'installazione sull'host e non in Docker;
-- [x] scegliere AF_PACKET come modalità di cattura;
-- [x] diagnosticare il fallimento causato da `eth0` inesistente;
-- [x] creare un backup della configurazione;
-- [x] configurare `HOME_NET` con `10.42.0.0/24`;
-- [x] configurare l'interfaccia hotspot reale;
-- [x] installare e verificare le regole;
-- [x] verificare la configurazione con codice di uscita `0`;
-- [x] eseguire Suricata manualmente in modalità IDS;
-- [x] generare traffico autorizzato;
-- [x] leggere `fast.log`, `eve.json` e `suricata.log`;
-- [x] osservare DNS, HTTP, TLS, QUIC, mDNS, DHCP, flow e fileinfo;
-- [x] registrare un alert reale;
-- [x] controllare errori e pacchetti persi;
-- [x] verificare l'arresto controllato senza interrompere routing e hotspot.
-
-## Attività ancora da completare
-
-- [ ] provare `systemctl start suricata` con servizio disabilitato al boot;
-- [ ] verificare la combinazione `active` e `disabled`;
-- [ ] provare `systemctl stop suricata` e controllare la chiusura;
-- [ ] creare una regola locale innocua per un alert intenzionale e ripetibile;
-- [ ] verificare la frequenza globale di logrotate;
-- [ ] decidere la conservazione finale dei log;
-- [ ] misurare i drop durante una prova più lunga;
-- [ ] documentare eventuali falsi positivi e tuning;
-- [ ] creare estratti pubblici anonimizzati e report privato completo.
-
-## Comandi principali verificati
-
-```bash
-suricata -V
-suricata --build-info
-suricata-update --version
-jq --version
-sudo suricata -T -c /etc/suricata/suricata.yaml
-sudo jq -r '.event_type' /var/log/suricata/eve.json | sort | uniq -c | sort -nr
-sudo tail -n 30 /var/log/suricata/fast.log
-sudo tail -n 40 /var/log/suricata/suricata.log
-```
+- [x] installazione di Suricata, `suricata-update` e `jq`;
+- [x] registrazione di versione e funzionalità;
+- [x] installazione sull’host e non in Docker;
+- [x] scelta di AF_PACKET;
+- [x] diagnosi dell’errore `eth0`;
+- [x] backup della configurazione;
+- [x] configurazione di `HOME_NET`;
+- [x] configurazione dell’interfaccia hotspot;
+- [x] installazione e verifica delle regole;
+- [x] test della configurazione con codice `0`;
+- [x] cattura manuale in primo piano;
+- [x] osservazione di traffico reale autorizzato;
+- [x] lettura di `fast.log`, `eve.json` e `suricata.log`;
+- [x] avvio e arresto su richiesta tramite systemd;
+- [x] conferma `active/disabled`;
+- [x] regola locale innocua;
+- [x] alert intenzionale e ripetibile;
+- [x] controllo di errori e pacchetti persi;
+- [x] rotazione reale di `eve.json`;
+- [x] conservazione di 14 archivi compressi;
+- [x] arresto senza interrompere routing e hotspot;
+- [x] report pubblico anonimizzato;
+- [x] report privato preparato fuori da Git.
 
 ## Privacy
 
 Non pubblicare:
 
-- nome completo dell'interfaccia USB se incorpora il MAC;
+- nome completo dell’interfaccia USB che incorpora il MAC;
 - indirizzi MAC;
 - frame Ethernet grezzi;
-- IP e porte completi non necessari;
 - query DNS personali;
-- log integrali;
 - hostname e percorsi locali;
-- file `eve.json` o PCAP grezzi.
+- log integrali;
+- file `eve.json` completi;
+- indirizzi e porte reali non necessari.
+
+## File prodotti
+
+Report pubblico:
+
+```text
+samples/07-suricata-report.md
+```
+
+Report privato locale:
+
+```text
+reports/07-suricata-private.md
+```
+
+Il report privato deve restare escluso da Git.
 
 ## Rollback
 
-Arrestare Suricata:
+Arrestare e disabilitare:
 
 ```bash
 sudo systemctl stop suricata
-```
-
-Assicurarsi che non parta automaticamente:
-
-```bash
 sudo systemctl disable suricata
 ```
 
-Ripristino della configurazione:
+Ripristinare un backup della configurazione:
 
 ```bash
 sudo cp -a \
@@ -487,7 +639,15 @@ sudo cp -a \
     /etc/suricata/suricata.yaml
 ```
 
-Verifica dopo il ripristino:
+Ripristinare logrotate, se necessario:
+
+```bash
+sudo cp -a \
+    /etc/logrotate.d/suricata.backup-<TIMESTAMP> \
+    /etc/logrotate.d/suricata
+```
+
+Verificare:
 
 ```bash
 sudo suricata -T -c /etc/suricata/suricata.yaml
@@ -495,35 +655,16 @@ sudo suricata -T -c /etc/suricata/suricata.yaml
 
 ## Condizione di completamento
 
-La fase sarà completata quando:
-
-- l'avvio e l'arresto su richiesta tramite systemd saranno verificati;
-- sarà prodotto un alert di test innocuo e ripetibile;
-- la rotazione e conservazione dei log saranno definite;
-- una prova più lunga confermerà drop non anomali;
-- report pubblico e privato saranno aggiornati.
+- Suricata parte senza errori;
+- osserva l’interfaccia hotspot;
+- produce `eve.json`;
+- registra un alert controllato;
+- usa la modalità IDS passiva;
+- resta disabilitato al boot;
+- può essere arrestato senza interrompere il gateway;
+- i log vengono ruotati e compressi;
+- report pubblico e privato sono preparati.
 
 ## Prossimo passo
 
-Alla ripresa, eseguire la prova di avvio su richiesta tramite systemd mantenendo Suricata disabilitato al boot:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl disable suricata
-sudo systemctl start suricata
-systemctl is-active suricata
-systemctl is-enabled suricata
-```
-
-Risultato atteso durante la prova:
-
-```text
-active
-disabled
-```
-
-Poi arrestare con:
-
-```bash
-sudo systemctl stop suricata
-```
+Fase 8: installare Zeek sull’host Ubuntu e confrontare i suoi log di rete con gli eventi Suricata.
