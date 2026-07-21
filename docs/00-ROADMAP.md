@@ -42,8 +42,8 @@ Internet
 | 5 | [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md) | Applicare filtro stateful, log e persistenza | COMPLETATO |
 | 6 | [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md) | Verificare filtri, protocolli, NAT e PCAP | COMPLETATO |
 | 7 | [`steps/07-suricata.md`](steps/07-suricata.md) | Produrre e verificare avvisi IDS | COMPLETATO |
-| 8 | [`steps/08-zeek.md`](steps/08-zeek.md) | Generare log di rete strutturati | PROSSIMO |
-| 9 | [`steps/09-python-log-analysis.md`](steps/09-python-log-analysis.md) | Leggere log e produrre statistiche | DA FARE |
+| 8 | [`steps/08-zeek.md`](steps/08-zeek.md) | Generare log di rete strutturati | COMPLETATO |
+| 9 | [`steps/09-python-log-analysis.md`](steps/09-python-log-analysis.md) | Leggere log e produrre statistiche | PROSSIMO |
 | 10 | [`steps/10-database-dashboard-docker.md`](steps/10-database-dashboard-docker.md) | Salvare e visualizzare dati | DA FARE |
 | 11 | [`steps/11-test-hardening-backup.md`](steps/11-test-hardening-backup.md) | Test finali, hardening, backup e ripristino | DA FARE |
 
@@ -103,7 +103,6 @@ Completata il 17 luglio 2026.
 
 Realizzati e provati:
 
-- backup del ruleset;
 - filtro `INPUT` sull’hotspot;
 - filtro `FORWARD` stateful;
 - DHCP, DNS e ICMP necessari consentiti;
@@ -131,40 +130,12 @@ samples/05-firewall-nftables-report.md
 
 Completata e verificata il 18 luglio 2026.
 
-Sono stati verificati:
-
-- sintassi dei filtri BPF;
-- catture limitate al client autorizzato;
-- interpretazione di indirizzi, porte e direzioni;
-- UDP/443 compatibile con QUIC/HTTP/3;
-- consultazione WHOIS e limiti di attribuzione;
-- DNS tradizionale con record `A`, `AAAA`, `CNAME` e `HTTPS`;
-- richieste ICMP senza risposta del telefono;
-- handshake TCP completo;
-- flag ACK, PSH, FIN e RST;
-- traffico cifrato senza decifrazione;
-- stesso flusso abbinato riga per riga prima e dopo il NAT;
-- traduzione inversa e decremento TTL;
-- PCAP privato di 20 record con snapshot di 128 byte;
-- formato Linux cooked v2;
-- permessi `600`;
-- creazione e lettura compatibili con AppArmor attivo;
-- nessun PCAP grezzo pubblicato;
-- nessuna perdita segnalata dal kernel.
-
-Report pubblico principale:
+Sono stati verificati filtri BPF, DNS tradizionale, ICMP, handshake TCP, traffico cifrato, confronto prima e dopo il NAT, decremento TTL, PCAP privato limitato, AppArmor attivo e assenza di perdite segnalate dal kernel.
 
 ```text
-samples/06-cattura-tcpdump-report.md
+Report pubblico: samples/06-cattura-tcpdump-report.md
+Report privato:  reports/06-cattura-tcpdump-private.md
 ```
-
-Report privato locale:
-
-```text
-reports/06-cattura-tcpdump-private.md
-```
-
-Il report privato e il PCAP restano fuori da Git.
 
 ## Fase 7 — Suricata
 
@@ -172,57 +143,71 @@ Completata e verificata il 20 luglio 2026.
 
 Sono stati verificati:
 
-- installazione sull’host Ubuntu e non in Docker;
-- Suricata 8.0.3, `suricata-update` e `jq`;
+- Suricata 8.0.3 sull’host Ubuntu;
 - supporto AF_PACKET e Hyperscan;
-- diagnosi dell’interfaccia predefinita `eth0` inesistente;
 - `HOME_NET` limitato a `10.42.0.0/24`;
-- interfaccia hotspot configurata in AF_PACKET;
 - oltre 52.000 regole caricate senza errori;
-- test della configurazione con codice di uscita `0`;
 - eventi flow, DNS, TLS, QUIC, HTTP, DHCP, mDNS e fileinfo;
-- servizio avviato su richiesta con stato `active/disabled`;
-- arresto con stato `inactive/disabled`;
-- regola locale ICMP innocua con SID `1000001`;
-- alert controllato con azione `allowed`;
-- statistiche AF_PACKET e drop finali dello `0,25%`;
-- rotazione giornaliera controllata da timer e soglia di 1 MiB;
-- 14 archivi compressi previsti;
-- rotazione reale di `eve.json` in `eve.json.1.gz`.
-
-Report pubblico:
+- servizio avviato su richiesta e disabilitato al boot;
+- regola ICMP locale con alert `allowed`;
+- drop finali dello `0,25%` nella prova gestita;
+- rotazione reale di `eve.json` in archivio gzip.
 
 ```text
-samples/07-suricata-report.md
+Report pubblico: samples/07-suricata-report.md
+Report privato:  reports/07-suricata-private.md
 ```
-
-Report privato locale:
-
-```text
-reports/07-suricata-private.md
-```
-
-Suricata resta disabilitato al boot e viene avviato soltanto durante le sessioni di laboratorio.
 
 ## Fase 8 — Zeek
 
-- installazione e configurazione sull’host Ubuntu;
-- scelta dell’interfaccia di osservazione;
-- analisi di `conn.log`, `dns.log`, `http.log`, `ssl.log` e `notice.log`;
-- formato TSV o JSON;
-- confronto con `eve.json` di Suricata;
-- rotazione e conservazione;
-- uso su richiesta senza avvio automatico non necessario.
+Completata e verificata il 21 luglio 2026.
+
+Sono stati verificati:
+
+- Zeek 8.0.9 e ZeekControl installati sotto `/opt/zeek`;
+- plugin AF_PACKET e Pcap;
+- nodo standalone sull’interfaccia hotspot;
+- rete locale `10.42.0.0/24`;
+- `PrivateAddressSpaceIsLocal = 0`;
+- `digest_salt` personalizzato;
+- formato JSON tramite `policy/tuning/json-logs`;
+- cattura manuale di 12.850 pacchetti con zero drop kernel;
+- zero gap TCP e zero byte mancanti;
+- log `conn`, `dns`, `ssl` e `quic`;
+- avvio e arresto tramite ZeekControl;
+- archiviazione dei log all’arresto;
+- ripristino finale di Suricata.
+
+Conteggi della prova gestita:
+
+```text
+conn.log    19 eventi
+dns.log     85 eventi
+ssl.log     13 eventi
+quic.log    13 eventi
+```
+
+Tutti i file controllati erano JSON validi.
+
+La rotazione è configurata ogni ora; non è stata attesa un’ora completa. È stata verificata l’archiviazione gestita all’arresto e la lettura dei file `.log.gz`.
+
+```text
+Guida:           docs/steps/08-zeek.md
+Report pubblico: samples/08-zeek-report.md
+Report privato:  reports/08-zeek-private.md
+```
+
+Zeek resta spento durante il normale funzionamento e viene avviato manualmente durante il laboratorio.
 
 ## Fase 9 — Python
 
 Percorso progressivo:
 
 1. leggere file;
-2. gestire righe e colonne;
+2. gestire righe e oggetti JSON;
 3. usare funzioni, dizionari e contatori;
-4. leggere JSON Suricata;
-5. leggere log Zeek;
+4. leggere `eve.json` di Suricata;
+5. leggere log JSON di Zeek;
 6. calcolare IP, domini e porte frequenti;
 7. raggruppare per dispositivo e tempo;
 8. esportare CSV e JSON;
