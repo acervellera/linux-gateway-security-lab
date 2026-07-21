@@ -290,7 +290,7 @@ L'arresto di Zeek non ha interrotto hotspot, routing, NAT o accesso Internet.
 normalmente:            Zeek spento
 sessione di laboratorio: avvio manuale con zeekctl deploy
 fine laboratorio:       arresto con zeekctl stop
-avvio al boot:          non configurato
+avvio al boot:           non configurato
 ```
 
 Questa scelta riduce il consumo di risorse e mantiene separati i test di Zeek e Suricata.
@@ -333,7 +333,7 @@ sudo gzip -cd file.log.gz | wc -l
 - [x] arresto di Zeek senza interruzione del gateway;
 - [x] Suricata ripristinato e attivo;
 - [ ] rotazione oraria osservata per un intervallo completo;
-- [ ] primo programma Python dedicato ai log Zeek.
+- [x] primo programma Python dedicato ai log Zeek.
 
 ## Privacy
 
@@ -367,6 +367,6 @@ sudo /opt/zeek/bin/zeekctl check
 
 Rimuovere soltanto i log di test non più necessari. Zeek non modifica routing, NAT o firewall.
 
-## Prossimo passo
+## Passo successivo
 
-Fase 9: scrivere il primo programma Python che legge i log JSON di Zeek senza modificare la rete.
+La fase 9 è stata completata con analisi Zeek e Suricata, esportazione JSON, correlazione reale e 23 test automatici. Il passo successivo è la fase 10: database e dashboard Docker.
