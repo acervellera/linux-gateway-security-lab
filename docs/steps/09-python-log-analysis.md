@@ -3,8 +3,10 @@
 ## Stato
 
 ```text
-DA FARE
+PROSSIMA
 ```
+
+I prerequisiti sono disponibili: Suricata produce `eve.json` e Zeek produce log JSON come `conn.log`, `dns.log`, `ssl.log` e `quic.log`.
 
 ## Obiettivo
 
@@ -25,24 +27,55 @@ Ogni programma verrà scritto lentamente. Verranno spiegati:
 - struttura dei log;
 - test del risultato.
 
+Prima di scrivere codice verrà sempre valutato il metodo più diretto e semplice. Non verranno introdotte librerie esterne quando la libreria standard è sufficiente.
+
+## Dati disponibili
+
+Suricata:
+
+```text
+/var/log/suricata/eve.json
+```
+
+Zeek:
+
+```text
+/opt/zeek/logs/current/*.log
+/opt/zeek/logs/.../*.log.gz
+```
+
+Gli esercizi useranno copie piccole e anonimizzate leggibili senza `sudo`. I log integrali resteranno privati.
+
 ## Percorso degli esercizi
 
-### Esercizio 1 — Leggere un file
+### Esercizio 1 — Leggere un log JSON riga per riga
 
-Aprire un file di esempio, leggere le righe e contarle.
+Aprire un piccolo estratto Zeek, leggere ogni riga, convertirla in un dizionario Python e contare gli eventi.
 
 Concetti:
 
 - `pathlib.Path`;
-- `open` tramite context manager;
-- encoding;
+- context manager `with`;
+- encoding UTF-8;
+- libreria standard `json`;
 - eccezioni di base.
 
 ### Esercizio 2 — Contare valori
 
 Estrarre un campo e usare `collections.Counter` per trovare gli elementi più frequenti.
 
-### Esercizio 3 — Suricata JSON
+### Esercizio 3 — Zeek `conn.log`
+
+Calcolare:
+
+- connessioni totali;
+- protocolli e servizi;
+- porte più usate;
+- byte inviati e ricevuti;
+- durata media;
+- stati delle connessioni.
+
+### Esercizio 4 — Suricata JSON
 
 Leggere `eve.json` una riga alla volta con la libreria standard `json`.
 
@@ -53,17 +86,6 @@ Statistiche iniziali:
 - IP sorgente e destinazione;
 - porte;
 - eventi per ora.
-
-### Esercizio 4 — Zeek
-
-Leggere un estratto di `conn.log` o una versione JSON e calcolare:
-
-- connessioni totali;
-- IP più contattati;
-- porte più usate;
-- byte inviati e ricevuti;
-- protocolli;
-- durata media.
 
 ### Esercizio 5 — Unire i dati
 
@@ -122,18 +144,23 @@ Ogni script deve:
 - saltare o segnalare righe malformate;
 - non caricare in memoria log enormi senza necessità;
 - separare lettura, analisi e presentazione;
-- includere dati di test anonimizzati.
+- includere dati di test anonimizzati;
+- usare nomi chiari e commenti utili, non commenti ridondanti.
 
 ## Test di completamento
 
-- [ ] lettura Suricata funzionante;
 - [ ] lettura Zeek funzionante;
+- [ ] lettura Suricata funzionante;
 - [ ] statistiche verificate manualmente su un piccolo campione;
 - [ ] errori gestiti;
 - [ ] report JSON e testuale prodotti;
 - [ ] codice commentato e spiegato;
 - [ ] test automatici essenziali superati.
 
-## Prossimo passo
+## Primo passo
+
+Creare un piccolo estratto anonimizzato di `conn.log` e scrivere il programma Python più semplice che lo legge riga per riga e conta gli eventi.
+
+## Passo successivo
 
 Salvare i risultati in un database e visualizzarli tramite servizi Docker.
