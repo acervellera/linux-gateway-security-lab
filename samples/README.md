@@ -14,6 +14,7 @@ Ogni fase completata possiede un solo report pubblico principale nella radice di
 05-firewall-nftables-report.md
 06-cattura-tcpdump-report.md
 07-suricata-report.md
+08-zeek-report.md
 ```
 
 Non viene usata una sottocartella `samples/reports/`. Gli output supplementari sono ammessi soltanto quando aggiungono materiale utile senza duplicare il report principale.
@@ -30,38 +31,54 @@ Non viene usata una sottocartella `samples/reports/`. Gli output supplementari s
 
 ## Fase 6
 
-[`06-cattura-tcpdump-report.md`](06-cattura-tcpdump-report.md) è l’unico report pubblico principale della fase e riunisce:
+[`06-cattura-tcpdump-report.md`](06-cattura-tcpdump-report.md) riunisce:
 
 - filtri BPF e interpretazione di IP, porte e direzioni;
 - traffico UDP 443 compatibile con QUIC/HTTP/3;
-- consultazione WHOIS e limiti di attribuzione;
 - DNS tradizionale e record `A`, `AAAA`, `CNAME`, `HTTPS`;
 - richieste ICMP senza risposta del client;
 - handshake TCP completo e principali flag TCP;
-- confronto riga per riga prima e dopo il NAT;
-- traduzione inversa e decremento TTL;
+- confronto prima e dopo il NAT;
 - PCAP limitato, snapshot di 128 byte e permessi privati;
-- lettura compatibile con il profilo AppArmor attivo;
+- lettura compatibile con AppArmor attivo;
 - privacy e conservazione dei dati.
 
-I precedenti estratti separati della fase 6 sono stati incorporati nel report principale e rimossi. Il PCAP grezzo non è pubblicato.
+Il PCAP grezzo non è pubblicato.
 
 ## Fase 7
 
 [`07-suricata-report.md`](07-suricata-report.md) documenta:
 
-- installazione di Suricata sull’host Ubuntu e non in Docker;
+- installazione di Suricata sull’host Ubuntu;
 - cattura AF_PACKET sull’interfaccia hotspot;
 - correzione dell’interfaccia predefinita `eth0`;
 - `HOME_NET` limitato a `10.42.0.0/24`;
 - caricamento delle regole senza errori;
 - eventi DNS, TLS, QUIC, HTTP, DHCP, mDNS e flow;
-- avvio e arresto su richiesta con servizio disabilitato al boot;
-- regola locale ICMP innocua e alert ripetibile;
+- avvio e arresto su richiesta;
+- regola ICMP locale e alert ripetibile;
 - statistiche di cattura e drop;
-- rotazione reale di `eve.json` e conservazione compressa.
+- rotazione reale di `eve.json`.
 
 Il file completo `eve.json`, i log integrali e i valori locali sensibili non sono pubblicati.
+
+## Fase 8
+
+[`08-zeek-report.md`](08-zeek-report.md) documenta:
+
+- installazione di Zeek 8.0.9 sull’host Ubuntu;
+- plugin di cattura AF_PACKET e Pcap;
+- cattura manuale sull’interfaccia hotspot;
+- rete locale `10.42.0.0/24`;
+- log JSON `conn`, `dns`, `ssl` e `quic`;
+- assenza di drop kernel, gap TCP e byte mancanti nella prova manuale;
+- configurazione standalone tramite ZeekControl;
+- `digest_salt` personalizzato senza pubblicarne il valore;
+- avvio e arresto on demand;
+- archiviazione dei log all’arresto;
+- ripristino finale di Suricata.
+
+Il nome reale dell’interfaccia, gli IP client, le query DNS, gli SNI TLS, i certificati e i log integrali non sono pubblicati.
 
 ## Contenuti ammessi
 
@@ -82,6 +99,8 @@ Il file completo `eve.json`, i log integrali e i valori locali sensibili non son
 - IP completi non necessari;
 - porte temporanee associate a sessioni reali;
 - query DNS personali;
+- SNI TLS e certificati non necessari;
+- valore di `digest_salt`;
 - log integrali;
 - PCAP grezzi;
 - traffico appartenente a terzi.
