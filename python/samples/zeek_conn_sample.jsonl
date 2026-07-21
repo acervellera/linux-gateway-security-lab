@@ -1,0 +1,5 @@
+{"ts":1784635500.1,"uid":"C_SAMPLE_001","id.orig_h":"10.42.0.10","id.orig_p":53001,"id.resp_h":"192.0.2.53","id.resp_p":53,"proto":"udp","service":"dns","duration":0.025,"orig_bytes":42,"resp_bytes":120,"conn_state":"SF"}
+{"ts":1784635501.2,"uid":"C_SAMPLE_002","id.orig_h":"10.42.0.10","id.orig_p":53002,"id.resp_h":"198.51.100.20","id.resp_p":443,"proto":"tcp","service":"ssl","duration":1.45,"orig_bytes":850,"resp_bytes":4200,"conn_state":"SF"}
+{"ts":1784635502.3,"uid":"C_SAMPLE_003","id.orig_h":"10.42.0.20","id.orig_p":53003,"id.resp_h":"203.0.113.30","id.resp_p":443,"proto":"udp","service":"quic","duration":0.82,"orig_bytes":620,"resp_bytes":1850,"conn_state":"SF"}
+questa riga non e JSON ed e inserita volontariamente
+{"ts":1784635503.4,"uid":"C_SAMPLE_004","id.orig_h":"10.42.0.20","id.orig_p":53004,"id.resp_h":"192.0.2.80","id.resp_p":80,"proto":"tcp","service":"http","duration":0.0,"orig_bytes":0,"resp_bytes":0,"conn_state":"S0"}
