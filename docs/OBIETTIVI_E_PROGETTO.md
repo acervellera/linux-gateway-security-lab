@@ -22,8 +22,6 @@ Il risultato finale deve essere un laboratorio che funzioni realmente e, sopratt
 
 Trasformare un computer Ubuntu fisico in un gateway di sicurezza attraverso cui far passare il traffico di dispositivi di test autorizzati.
 
-Il gateway deve permettere di studiare direttamente:
-
 ```text
 client di laboratorio
         |
@@ -36,7 +34,7 @@ Ubuntu gateway
 uplink Internet
 ```
 
-Ubuntu diventa quindi il punto in cui osservare e controllare il traffico, invece di lasciare che il dispositivo comunichi direttamente con il router domestico.
+Ubuntu diventa il punto in cui osservare e controllare il traffico, invece di lasciare che il dispositivo comunichi direttamente con il router domestico.
 
 ---
 
@@ -67,6 +65,7 @@ Imparare a:
 - catturare traffico in modo mirato;
 - interpretare metadati senza tentare di decifrare comunicazioni private;
 - produrre log utili per diagnosi e investigazione;
+- confrontare IDS e analisi di protocollo;
 - preparare sempre un rollback sicuro.
 
 ### 3.3 Python
@@ -111,7 +110,7 @@ Il routing principale, il firewall e l’osservazione delle interfacce restano r
 
 ## 4. Metodo di lavoro
 
-Ogni fase deve seguire lo stesso ciclo:
+Ogni fase segue lo stesso ciclo:
 
 ```text
 osservare
@@ -145,7 +144,7 @@ Il progetto deve generare materiale utile anche per lo studio futuro:
 - spiegazioni dettagliate dei comandi e dei flag;
 - report tecnici privati completi;
 - esempi pubblici anonimizzati;
-- configurazioni versionate;
+- configurazioni versionate quando non contengono dati sensibili;
 - backup verificati;
 - script Python commentati;
 - dati di test piccoli e controllabili;
@@ -157,8 +156,6 @@ Il repository non deve essere soltanto una raccolta di configurazioni. Deve most
 ---
 
 ## 6. Architettura del laboratorio
-
-L’architettura principale usa due schede Wi-Fi con ruoli separati:
 
 ```text
 Telefono, portatile o dispositivo autorizzato
@@ -173,7 +170,7 @@ modalità Access Point
                     v
 Ubuntu gateway fisico
 |-- NetworkManager
-|-- DHCP e DNS locale iniziali
+|-- DHCP e DNS locale
 |-- routing IPv4
 |-- NAT / masquerading
 |-- nftables
@@ -211,32 +208,50 @@ Nomi completi che incorporano MAC, indirizzi MAC, password e dettagli locali res
 
 ## 7. Stato raggiunto
 
-Sono già stati verificati sul gateway fisico:
+Sono state completate e verificate le prime otto fasi.
+
+### Gateway e rete
 
 - identificazione delle interfacce e dei driver;
 - scelta della subnet del laboratorio;
 - creazione dell’hotspot sulla Realtek;
 - associazione di client reali;
-- assegnazione di indirizzi `10.42.0.x`;
-- raggiungibilità di Ubuntu dal client;
 - DHCP e DNS tramite `dnsmasq`;
 - forwarding IPv4;
 - NAT e masquerading;
 - traffico osservato prima e dopo il NAT;
-- sicurezza Wi-Fi WPA2-RSN con CCMP;
-- filtro nftables `FORWARD` stateful;
-- contatori nftables con traffico reale;
-- rollback e ricaricamento del filtro;
-- convivenza con le regole di NetworkManager, Docker e libvirt.
+- sicurezza Wi-Fi WPA2-RSN con CCMP.
 
-Restano da completare nella fase firewall:
+### Firewall e cattura
 
-- filtro del traffico diretto a Ubuntu tramite `INPUT`;
-- prove controllate delle regole di blocco;
-- logging con rate limit;
-- persistenza dopo riavvio.
+- filtro nftables `INPUT` e `FORWARD` stateful;
+- contatori, logging, rollback e persistenza;
+- coesistenza con NetworkManager, Docker e libvirt;
+- catture tcpdump mirate;
+- DNS, ICMP, handshake TCP e traffico cifrato;
+- PCAP privato limitato e AppArmor mantenuto attivo.
 
-Dopo il firewall verranno introdotti gradualmente cattura strutturata, IDS, log di rete, analisi Python e dashboard.
+### Suricata
+
+- IDS passivo installato sull’host;
+- oltre 52.000 regole caricate;
+- eventi DNS, TLS, QUIC, HTTP, DHCP, mDNS e flow;
+- alert ICMP locale controllato con azione `allowed`;
+- avvio on demand e rotazione reale dei log.
+
+### Zeek
+
+- Zeek 8.0.9 e ZeekControl installati;
+- sensore standalone sull’interfaccia hotspot;
+- rete locale `10.42.0.0/24`;
+- log JSON di connessione, DNS, TLS e QUIC;
+- cattura manuale senza drop kernel;
+- zero gap TCP e zero byte mancanti nella prova;
+- avvio e arresto on demand;
+- archiviazione dei log all’arresto;
+- Suricata ripristinato al termine.
+
+La prossima fase è lo sviluppo del primo analizzatore Python dei log JSON.
 
 ---
 
@@ -302,6 +317,10 @@ Nel repository pubblico non devono comparire:
 - indirizzi MAC reali non necessari;
 - nomi completi di interfacce che incorporano MAC;
 - hostname e percorsi personali non necessari;
+- IP client e porte temporanee non necessari;
+- query DNS personali;
+- SNI TLS e certificati non necessari;
+- valore di `digest_salt`;
 - log completi non revisionati;
 - file PCAP reali;
 - dati personali o traffico appartenente a terzi.
