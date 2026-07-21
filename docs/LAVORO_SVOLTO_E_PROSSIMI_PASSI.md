@@ -12,7 +12,7 @@ Telefono / dispositivo autorizzato
   -> Realtek USB AP
   -> Ubuntu gateway
   -> nftables INPUT e FORWARD
-  -> Suricata AF_PACKET in modalità IDS passiva
+  -> Suricata IDS passivo oppure Zeek standalone
   -> NAT/masquerading
   -> MediaTek wlp13s0
   -> router
@@ -77,29 +77,11 @@ Installati script, configurazioni e servizio `security-gateway-firewall.service`
 
 Completata e verificata il 18 luglio 2026.
 
-Sono stati verificati:
-
-- filtri BPF limitati;
-- DNS con record `A`, `AAAA`, `CNAME` e `HTTPS`;
-- richieste ICMP;
-- handshake TCP completo;
-- flag ACK, PSH, FIN e RST;
-- traffico cifrato;
-- NAT riga per riga sui due lati;
-- decremento TTL;
-- PCAP privato di 20 record e snapshot 128 byte;
-- formato Linux cooked v2;
-- permessi `600`;
-- AppArmor mantenuto attivo.
-
-Report pubblico:
-
-- [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md).
-
-Report privato:
+Sono stati verificati filtri BPF, DNS, ICMP, handshake TCP, flag principali, traffico cifrato, NAT sui due lati, decremento TTL, PCAP privato limitato, formato Linux cooked v2, permessi `600` e compatibilità con AppArmor.
 
 ```text
-reports/06-cattura-tcpdump-private.md
+Report pubblico: samples/06-cattura-tcpdump-report.md
+Report privato:  reports/06-cattura-tcpdump-private.md
 ```
 
 ## Fase 7 completata — Suricata IDS
@@ -119,121 +101,120 @@ systemd:          yes
 
 Suricata è installato sull’host Ubuntu, non in Docker.
 
-### Problemi diagnosticati
+### Configurazione e regole
 
-La configurazione predefinita usava `eth0`, interfaccia inesistente sul gateway. Sono state inoltre installate le regole inizialmente mancanti.
+La configurazione predefinita usava `eth0`, interfaccia inesistente. `HOME_NET` è stato limitato a `10.42.0.0/24` e sono state caricate oltre 52.000 regole senza errori.
 
-Configurazione finale anonimizzata:
+### Eventi e alert
 
-```yaml
-HOME_NET: "[10.42.0.0/24]"
+Osservati eventi flow, QUIC, mDNS, DNS, TLS, HTTP, fileinfo, DHCP, stats e alert. Una regola ICMP locale innocua ha prodotto l’alert previsto con azione `allowed`.
 
-af-packet:
-  - interface: wlx<REDACTED>
-```
+### Modalità operativa e rotazione
 
-### Regole
-
-Il test finale ha caricato:
+Suricata resta disabilitato al boot ed è avviato soltanto durante il laboratorio. La rotazione reale ha creato `eve.json.1.gz`.
 
 ```text
-2 file di regole
-52044 regole corrette
-0 regole fallite
-52049 firme elaborate
+Report pubblico: samples/07-suricata-report.md
+Report privato:  reports/07-suricata-private.md
 ```
 
-### Eventi osservati
+## Fase 8 completata — Zeek e log di rete
 
-Sono stati osservati eventi:
+Completata e verificata il 21 luglio 2026.
+
+### Installazione
+
+I repository Ubuntu configurati non offrivano Zeek. È stato aggiunto il repository ufficiale per Ubuntu 26.04 con chiave dedicata tramite `signed-by`.
 
 ```text
-flow, quic, mdns, dns, tls, http, fileinfo, dhcp, stats, alert
+Zeek:         8.0.9
+ZeekControl:  2.6.0-31
+Prefisso:     /opt/zeek
 ```
 
-È stato documentato un alert decoder `SURICATA Ethertype unknown` senza considerarlo automaticamente un attacco.
+Verificati plugin AF_PACKET, Pcap e gli analizzatori DNS, HTTP, TLS, QUIC e X.509.
 
-### Avvio su richiesta
+### Cattura manuale
 
-Suricata resta disabilitato al boot.
-
-Durante l’uso:
+Zeek è stato avviato direttamente sull’interfaccia hotspot con rete locale `10.42.0.0/24` e log JSON.
 
 ```text
-is-active:  active
-is-enabled: disabled
+pacchetti ricevuti:       12850
+pacchetti kernel persi:   0
+pacchetti non elaborati:  4 (0,03%)
+gap TCP stimati:          0
+perdita TCP stimata:      0,0%
+byte mancanti:            0
 ```
 
-Dopo l’arresto:
+Eventi principali:
 
 ```text
-is-active:  inactive
-is-enabled: disabled
+conn.log    56
+dns.log     67
+ssl.log     32
+quic.log    20
 ```
 
-### Alert locale controllato
+### Configurazione standalone
 
-Regola:
-
-```text
-alert icmp $HOME_NET any -> $HOME_NET any (msg:"LAB Suricata ICMP test"; itype:8; sid:1000001; rev:1;)
+```ini
+[zeek]
+type=standalone
+host=localhost
+interface=wlx<REDACTED>
 ```
 
-Un singolo ping broadcast ha prodotto l’alert atteso con:
-
 ```text
-proto:     ICMP
-signature: LAB Suricata ICMP test
-action:    allowed
+10.42.0.0/24    Rete laboratorio autorizzata
 ```
 
-### Statistiche
-
-Prova systemd di circa 62 secondi:
-
-```text
-packets:          145724
-drops:            367
-drop percentage:  0.25%
-invalid checksum: 0
-alerts:           1
+```ini
+PrivateAddressSpaceIsLocal = 0
 ```
 
-### Rotazione log
+In `local.zeek` il `digest_salt` è stato personalizzato e il logging JSON è stato abilitato:
 
-Verificati:
-
-```text
-controllo giornaliero tramite logrotate.timer
-soglia 1 MiB
-14 rotazioni
-compressione gzip
-copytruncate
+```zeek
+@load policy/tuning/json-logs
 ```
 
-Il blocco `postrotate` invia HUP soltanto se Suricata è attivo.
+### ZeekControl
 
-La rotazione reale ha creato:
+Controllo:
 
 ```text
-eve.json       nuovo file corrente
-eve.json.1.gz  archivio compresso
+zeek scripts are ok.
 ```
 
-### Documentazione
-
-Guida:
-
-- [`steps/07-suricata.md`](steps/07-suricata.md).
-
-Report pubblico:
-
-- [`../samples/07-suricata-report.md`](../samples/07-suricata-report.md).
-
-Report privato locale:
+La prova gestita ha prodotto:
 
 ```text
-reports/07-suricata-private.md
+conn.log    19 eventi
+dns.log     85 eventi
+ssl.log     13 eventi
+quic.log    13 eventi
+```
+
+Tutti i file erano JSON validi.
+
+### Modalità operativa
+
+```text
+normalmente:             Zeek spento
+sessione di laboratorio: zeekctl deploy
+fine laboratorio:        zeekctl stop
+avvio al boot:            non configurato
+```
+
+Al termine Zeek risultava `stopped` e Suricata `active`. Hotspot, routing, NAT e accesso Internet sono rimasti funzionanti.
+
+La rotazione è configurata ogni ora. Non è stata attesa un’ora completa; è stata verificata l’archiviazione dei log all’arresto e la lettura degli archivi gzip.
+
+```text
+Guida:           docs/steps/08-zeek.md
+Report pubblico: samples/08-zeek-report.md
+Report privato:  reports/08-zeek-private.md
 ```
 
 ## Stato corrente
@@ -247,18 +228,18 @@ reports/07-suricata-private.md
 | 5. Firewall nftables | COMPLETATA |
 | 6. tcpdump | COMPLETATA |
 | 7. Suricata | COMPLETATA |
-| 8. Zeek | PROSSIMA |
-| 9. Python | DA FARE |
+| 8. Zeek | COMPLETATA |
+| 9. Python | PROSSIMA |
 | 10. Docker | DA FARE |
 | 11. Test e hardening | DA FARE |
 
 ## Prossimi passi immediati
 
-1. copiare il report privato in `reports/07-suricata-private.md`;
+1. salvare il report privato come `reports/08-zeek-private.md`;
 2. applicare permessi `600`;
-3. verificare `git check-ignore`;
-4. eseguire `git fetch` e `git pull --ff-only` per scaricare gli aggiornamenti pubblici;
-5. passare a [`steps/08-zeek.md`](steps/08-zeek.md).
+3. verificare `git check-ignore` e `git status --short`;
+4. eseguire `git pull --ff-only` per scaricare gli aggiornamenti pubblici;
+5. passare a [`steps/09-python-log-analysis.md`](steps/09-python-log-analysis.md).
 
 ## Report pubblici e privati
 
@@ -279,4 +260,4 @@ Nella cartella locale `reports/`:
 - log operativi;
 - report personali.
 
-Non pubblicare password, token, MAC, PCAP grezzi, log integrali o traffico di terzi.
+Non pubblicare password, token, MAC, PCAP grezzi, log integrali, query DNS personali, SNI TLS, certificati, valore di `digest_salt` o traffico di terzi.
