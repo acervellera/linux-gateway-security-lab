@@ -30,14 +30,16 @@ Fase 4  DHCP, routing e NAT             COMPLETATA
 Fase 5  firewall nftables               COMPLETATA
 Fase 6  cattura tcpdump                 COMPLETATA
 Fase 7  Suricata IDS                    COMPLETATA
-Fase 8  Zeek                            PROSSIMA
+Fase 8  Zeek                            COMPLETATA
+Fase 9  analisi Python                  PROSSIMA
 ```
 
 Guide delle fasi più recenti:
 
-- [`steps/05-firewall-nftables.md`](steps/05-firewall-nftables.md);
 - [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md);
-- [`steps/07-suricata.md`](steps/07-suricata.md).
+- [`steps/07-suricata.md`](steps/07-suricata.md);
+- [`steps/08-zeek.md`](steps/08-zeek.md);
+- [`steps/09-python-log-analysis.md`](steps/09-python-log-analysis.md).
 
 ## Architettura sintetica
 
@@ -46,13 +48,13 @@ Client autorizzato
   -> Realtek USB AP
   -> Ubuntu gateway
   -> nftables INPUT/FORWARD
-  -> Suricata AF_PACKET in modalità IDS passiva
+  -> Suricata IDS passivo oppure Zeek standalone
   -> NAT/masquerading
   -> MediaTek uplink
   -> Internet
 ```
 
-La fase 6 ha verificato il percorso prima e dopo il NAT. La fase 7 ha verificato eventi IDS, regole, alert controllato, avvio su richiesta e rotazione dei log.
+La fase 6 ha verificato il percorso prima e dopo il NAT. La fase 7 ha verificato eventi IDS, regole, alert controllato, avvio su richiesta e rotazione dei log. La fase 8 ha verificato log JSON di connessione, DNS, TLS e QUIC, cattura senza drop kernel e gestione on demand tramite ZeekControl.
 
 ## Configurazioni e script verificati
 
@@ -64,9 +66,13 @@ La fase 6 ha verificato il percorso prima e dopo il NAT. La fase 7 ha verificato
 /etc/suricata/suricata.yaml
 /var/lib/suricata/rules/suricata.rules
 /var/lib/suricata/rules/local.rules
+/opt/zeek/etc/node.cfg
+/opt/zeek/etc/networks.cfg
+/opt/zeek/etc/zeekctl.cfg
+/opt/zeek/share/zeek/site/local.zeek
 ```
 
-I file sotto `/etc` e `/var/lib` sono configurazioni locali del gateway e non vengono pubblicati integralmente quando contengono valori sensibili.
+I file sotto `/etc`, `/var/lib` e `/opt` sono configurazioni locali del gateway e non vengono pubblicati integralmente quando contengono valori sensibili.
 
 ## Sample pubblici
 
@@ -76,7 +82,8 @@ Report più recenti:
 
 - [`../samples/05-firewall-nftables-report.md`](../samples/05-firewall-nftables-report.md);
 - [`../samples/06-cattura-tcpdump-report.md`](../samples/06-cattura-tcpdump-report.md);
-- [`../samples/07-suricata-report.md`](../samples/07-suricata-report.md).
+- [`../samples/07-suricata-report.md`](../samples/07-suricata-report.md);
+- [`../samples/08-zeek-report.md`](../samples/08-zeek-report.md).
 
 Output supplementare della fase 4:
 
@@ -99,12 +106,13 @@ Report privati recenti:
 ```text
 reports/06-cattura-tcpdump-private.md
 reports/07-suricata-private.md
+reports/08-zeek-private.md
 ```
 
 Verifica obbligatoria:
 
 ```bash
-git check-ignore -v reports/07-suricata-private.md
+git check-ignore -v reports/08-zeek-private.md
 git status --short
 ```
 
