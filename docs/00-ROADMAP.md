@@ -2,7 +2,7 @@
 
 ## Obiettivo generale
 
-Costruire un gateway Ubuntu attraverso cui far passare il traffico di dispositivi autorizzati, osservarlo in modo difensivo, analizzarne i log con Python e visualizzare i risultati tramite servizi Docker.
+Costruire un gateway Ubuntu attraverso cui far passare il traffico di dispositivi autorizzati, osservarlo in modo difensivo e analizzarne i log con Python.
 
 ## Architettura finale
 
@@ -43,26 +43,94 @@ Internet
 | 6 | [`steps/06-cattura-tcpdump.md`](steps/06-cattura-tcpdump.md) | Verificare filtri, protocolli, NAT e PCAP | COMPLETATO |
 | 7 | [`steps/07-suricata.md`](steps/07-suricata.md) | Produrre e verificare avvisi IDS | COMPLETATO |
 | 8 | [`steps/08-zeek.md`](steps/08-zeek.md) | Generare log di rete strutturati | COMPLETATO |
-| 9 | [`steps/09-python-log-analysis.md`](steps/09-python-log-analysis.md) | Leggere, analizzare e correlare i log | COMPLETATO |
+| 9 | [`steps/09-python-log-analysis.md`](steps/09-python-log-analysis.md) | Leggere log, produrre statistiche e correlare sensori | COMPLETATO |
 | 10 | [`steps/10-database-dashboard-docker.md`](steps/10-database-dashboard-docker.md) | Salvare e visualizzare dati | PROSSIMO |
 | 11 | [`steps/11-test-hardening-backup.md`](steps/11-test-hardening-backup.md) | Test finali, hardening, backup e ripristino | DA FARE |
 
-## Fasi 1–5 — Gateway e firewall
+## Fase 1 — Inventario
 
-Sono stati verificati hardware, topologia, hotspot, DHCP, DNS, forwarding, NAT, sicurezza WPA2-RSN/CCMP, filtri `INPUT` e `FORWARD`, logging, rollback, servizio systemd dedicato e persistenza dopo riavvio.
+Verificati Ubuntu, kernel, interfacce, driver MediaTek e Realtek, modalità AP, route predefinita, NetworkManager, rfkill e reti Docker.
 
-Componenti pubblici principali:
+## Fase 2 — Topologia
+
+Piano verificato:
+
+```text
+UPLINK_IF=wlp13s0
+AP_IF=wlx<REDACTED>
+LAB_SUBNET=10.42.0.0/24
+GATEWAY_IP=10.42.0.1
+DNS_SERVER=10.42.0.1
+HOTSPOT_PROFILE=security-gateway-ap
+LAB_SSID=SecurityGatewayLab
+```
+
+## Fase 3 — Hotspot Realtek
+
+Completata il 15 luglio 2026. Verificati modalità AP, `10.42.0.1/24`, `ipv4.method=shared`, client reali, route MediaTek e rollback del profilo.
+
+## Fase 4 — DHCP, routing e NAT
+
+Completata il 16 luglio 2026.
+
+Verificati:
+
+- DHCP e DNS tramite `dnsmasq`;
+- sequenza DHCP completa;
+- `net.ipv4.ip_forward=1`;
+- forwarding e masquerading;
+- traffico sui due lati del NAT;
+- DNS classico;
+- TCP 443 e UDP 443;
+- assenza di percorso cellulare durante il test;
+- WPA2-RSN con CCMP/AES.
+
+Percorso:
+
+```text
+client 10.42.0.x
+  -> Realtek 10.42.0.1
+  -> forwarding
+  -> NAT/masquerading
+  -> MediaTek 192.168.10.x
+  -> router
+  -> Internet
+```
+
+## Fase 5 — Firewall nftables
+
+Completata il 17 luglio 2026.
+
+Realizzati e provati:
+
+- filtro `INPUT` sull'hotspot;
+- filtro `FORWARD` stateful;
+- DHCP, DNS e ICMP necessari consentiti;
+- mDNS, WS-Discovery e accessi non previsti bloccati;
+- test TCP 631;
+- test hotspot→rete libvirt;
+- logging con rate limit;
+- rollback delle sole tabelle del progetto;
+- coesistenza con NetworkManager, Docker e libvirt;
+- script amministrativo;
+- servizio systemd dedicato;
+- persistenza dopo reboot reale.
+
+Componenti pubblici:
 
 ```text
 configs/nftables/security-gateway-input-filter.nft
 configs/nftables/security-gateway-filter.nft
 configs/systemd/security-gateway-firewall.service
 scripts/security-gateway-firewall
+samples/05-firewall-nftables-report.md
 ```
 
 ## Fase 6 — tcpdump
 
-Completata e verificata il 18 luglio 2026. Sono stati verificati DNS, ICMP, handshake TCP, traffico cifrato, confronto prima e dopo il NAT, PCAP privato limitato e compatibilità con AppArmor.
+Completata e verificata il 18 luglio 2026.
+
+Sono stati verificati filtri BPF, DNS tradizionale, ICMP, handshake TCP, traffico cifrato, confronto prima e dopo il NAT, decremento TTL, PCAP privato limitato, AppArmor attivo e assenza di perdite segnalate dal kernel.
 
 ```text
 Report pubblico: samples/06-cattura-tcpdump-report.md
@@ -71,7 +139,19 @@ Report privato:  reports/06-cattura-tcpdump-private.md
 
 ## Fase 7 — Suricata
 
-Completata e verificata il 20 luglio 2026. Suricata 8.0.3 è stato configurato come IDS passivo sull'interfaccia hotspot con `HOME_NET` limitato alla rete di laboratorio, regole caricate, alert controllato e rotazione reale di `eve.json`.
+Completata e verificata il 20 luglio 2026.
+
+Sono stati verificati:
+
+- Suricata 8.0.3 sull'host Ubuntu;
+- supporto AF_PACKET e Hyperscan;
+- `HOME_NET` limitato a `10.42.0.0/24`;
+- oltre 52.000 regole caricate senza errori;
+- eventi flow, DNS, TLS, QUIC, HTTP, DHCP, mDNS e fileinfo;
+- servizio avviato su richiesta e disabilitato al boot;
+- regola ICMP locale con alert `allowed`;
+- drop finali dello `0,25%` nella prova gestita;
+- rotazione reale di `eve.json` in archivio gzip.
 
 ```text
 Report pubblico: samples/07-suricata-report.md
@@ -80,12 +160,44 @@ Report privato:  reports/07-suricata-private.md
 
 ## Fase 8 — Zeek
 
-Completata e verificata il 21 luglio 2026. Zeek 8.0.9 è stato configurato come sensore standalone con log JSON `conn`, `dns`, `ssl` e `quic`, zero drop kernel nella prova manuale e gestione on demand tramite ZeekControl.
+Completata e verificata il 21 luglio 2026.
+
+Sono stati verificati:
+
+- Zeek 8.0.9 e ZeekControl installati sotto `/opt/zeek`;
+- plugin AF_PACKET e Pcap;
+- nodo standalone sull'interfaccia hotspot;
+- rete locale `10.42.0.0/24`;
+- `PrivateAddressSpaceIsLocal = 0`;
+- `digest_salt` personalizzato;
+- formato JSON tramite `policy/tuning/json-logs`;
+- cattura manuale di 12.850 pacchetti con zero drop kernel;
+- zero gap TCP e zero byte mancanti;
+- log `conn`, `dns`, `ssl` e `quic`;
+- avvio e arresto tramite ZeekControl;
+- archiviazione dei log all'arresto;
+- ripristino finale di Suricata.
+
+Conteggi della prova gestita:
 
 ```text
+conn.log    19 eventi
+dns.log     85 eventi
+ssl.log     13 eventi
+quic.log    13 eventi
+```
+
+Tutti i file controllati erano JSON validi.
+
+La rotazione è configurata ogni ora; non è stata attesa un'ora completa. È stata verificata l'archiviazione gestita all'arresto e la lettura dei file `.log.gz`.
+
+```text
+Guida:           docs/steps/08-zeek.md
 Report pubblico: samples/08-zeek-report.md
 Report privato:  reports/08-zeek-private.md
 ```
+
+Zeek resta spento durante il normale funzionamento e viene avviato manualmente durante il laboratorio.
 
 ## Fase 9 — Python
 
@@ -100,40 +212,67 @@ python/correlate_logs.py
 python/tests/test_phase9.py
 ```
 
-Risultati principali:
+Funzionalità verificate:
 
-- lettura streaming di JSON Lines e gzip;
-- statistiche Zeek e Suricata;
-- report testuali e JSON privi di IP grezzi e UID;
-- 23 test automatici superati;
-- correlazione reale di 101 eventi Suricata;
-- 33 connessioni Zeek abbinate su 35;
-- delta temporale medio di 0,027 secondi.
+1. lettura JSON Lines riga per riga;
+2. supporto gzip e standard input;
+3. funzioni, dizionari, `Counter` e `dataclass`;
+4. analisi `eve.json` di Suricata;
+5. analisi `conn.log` Zeek;
+6. conteggi di protocolli, servizi, porte, byte e stati;
+7. raggruppamento temporale degli eventi;
+8. esportazione JSON;
+9. gestione degli errori;
+10. correlazione tramite 5-tupla e timestamp;
+11. test automatici.
+
+Sessione reale sovrapposta:
 
 ```text
+Connessioni Zeek:                       35
+Eventi Suricata:                       318
+Eventi Suricata correlati:             101
+Connessioni Zeek distinte abbinate:     33
+Copertura connessioni Zeek:          94,29%
+Delta temporale medio:                0,027 s
+Delta temporale massimo:              0,330 s
+```
+
+Test:
+
+```text
+Ran 23 tests
+
+OK
+```
+
+```text
+Guida:           docs/steps/09-python-log-analysis.md
 Report pubblico: samples/09-python-log-analysis-report.md
 Report privato:  reports/09-python-log-analysis-private.md
 ```
 
-## Fase 10 — Database e dashboard Docker
+## Fase 10 — Docker
 
-Docker verrà usato per importazione, database, API, dashboard e volumi. I log e i report saranno montati in sola lettura quando possibile. Non verranno usati container privilegiati senza una necessità dimostrata.
+Docker verrà usato per servizi applicativi: importazione, database, dashboard, volumi e accesso ai log in sola lettura. Nessun container privilegiato senza necessità dimostrata.
 
-Percorso previsto:
+Percorso iniziale:
 
-1. definire uno schema minimo;
+1. definire lo schema minimo;
 2. importare i report JSON;
 3. rendere l'importazione idempotente;
 4. usare volumi persistenti;
-5. esporre una dashboard soltanto sulla rete prevista;
+5. limitare rete e privilegi;
 6. documentare backup e ripristino.
 
 ## Fase 11 — Test e hardening
 
 - uplink assente;
 - isolamento tra client;
-- casi `ct state invalid`;
-- servizi IDS fermi;
+- test da un secondo host dell'uplink;
+- casi `ct state invalid` controllati;
+- accessi consentiti tra reti;
+- IDS fermo;
 - spazio e rotazione log;
 - backup e ripristino;
 - rimozione sicura del laboratorio.
