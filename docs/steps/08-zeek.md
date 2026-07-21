@@ -151,7 +151,7 @@ Eventi principali osservati:
 
 ```text
 conn.log    56
- dns.log     67
+dns.log     67
 ssl.log     32
 quic.log    20
 ```
@@ -244,7 +244,7 @@ Dopo aver generato traffico autorizzato, i log principali contenevano:
 
 ```text
 conn.log    19 eventi
- dns.log     85 eventi
+dns.log     85 eventi
 ssl.log     13 eventi
 quic.log    13 eventi
 ```
