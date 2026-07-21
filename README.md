@@ -44,7 +44,7 @@ Telefono / dispositivo autorizzato
 
 ## Stato verificato
 
-Le prime sette fasi sono completate:
+Le prime otto fasi sono completate:
 
 1. hardware e rete inventariati;
 2. piano IP definito;
@@ -52,9 +52,10 @@ Le prime sette fasi sono completate:
 4. DHCP, routing e NAT verificati;
 5. firewall `nftables` stateful reso persistente;
 6. catture tcpdump con DNS, ICMP, handshake TCP, NAT e PCAP controllato verificate;
-7. Suricata IDS passivo con alert controllato, avvio on demand e rotazione log verificato.
+7. Suricata IDS passivo con alert controllato, avvio on demand e rotazione log verificato;
+8. Zeek 8.0.9 configurato come sensore standalone con log JSON DNS, TLS e QUIC verificati.
 
-La fase 8, Zeek, è la prossima attività.
+La fase 9, analisi Python dei log, è la prossima attività.
 
 | Fase | Stato |
 |---:|---|
@@ -65,28 +66,29 @@ La fase 8, Zeek, è la prossima attività.
 | 5. Firewall nftables | COMPLETATA |
 | 6. tcpdump | COMPLETATA |
 | 7. Suricata | COMPLETATA |
-| 8. Zeek | PROSSIMA |
-| 9. Python | DA FARE |
+| 8. Zeek | COMPLETATA |
+| 9. Python | PROSSIMA |
 | 10. Docker dashboard | DA FARE |
 | 11. Test e hardening | DA FARE |
 
-## Risultati della fase 7
+## Risultati della fase 8
 
 Sono stati verificati:
 
-- installazione di Suricata 8.0.3 sull’host Ubuntu, non in Docker;
-- supporto AF_PACKET e Hyperscan;
-- correzione dell’interfaccia predefinita `eth0` inesistente;
-- `HOME_NET` limitato a `10.42.0.0/24`;
-- oltre 52.000 regole caricate senza errori;
-- eventi DNS, TLS, QUIC, HTTP, DHCP, mDNS e flow;
-- avvio e arresto su richiesta tramite systemd;
-- servizio `disabled` al boot;
-- regola ICMP locale innocua e alert ripetibile;
-- azione `allowed`, coerente con IDS passivo;
-- statistiche AF_PACKET e drop finali dello `0,25%`;
-- rotazione reale di `eve.json` in archivio compresso;
-- conservazione prevista di 14 rotazioni.
+- Zeek 8.0.9 e ZeekControl installati sotto `/opt/zeek`;
+- plugin di cattura AF_PACKET e Pcap;
+- nodo standalone sull’interfaccia hotspot;
+- rete locale limitata a `10.42.0.0/24`;
+- `digest_salt` personalizzato;
+- log JSON abilitati;
+- cattura manuale con 12.850 pacchetti e zero drop kernel;
+- assenza di gap TCP e byte mancanti nella prova manuale;
+- eventi `conn.log`, `dns.log`, `ssl.log` e `quic.log`;
+- avvio e arresto tramite ZeekControl;
+- archiviazione dei log all’arresto;
+- Zeek fermo e Suricata ripristinato al termine del test.
+
+La rotazione oraria è configurata, ma non è stata attesa un’ora completa; è stata verificata l’archiviazione gestita all’arresto.
 
 ## Metodo di lavoro
 
@@ -115,9 +117,9 @@ Una fase viene segnata come completata soltanto dopo una verifica reale. Gli asp
 
 Guide più recenti:
 
-- [`docs/steps/05-firewall-nftables.md`](docs/steps/05-firewall-nftables.md);
 - [`docs/steps/06-cattura-tcpdump.md`](docs/steps/06-cattura-tcpdump.md);
-- [`docs/steps/07-suricata.md`](docs/steps/07-suricata.md).
+- [`docs/steps/07-suricata.md`](docs/steps/07-suricata.md);
+- [`docs/steps/08-zeek.md`](docs/steps/08-zeek.md).
 
 ## Report pubblici
 
@@ -127,9 +129,10 @@ Ogni fase completata possiede un solo report principale nella radice di `samples
 samples/05-firewall-nftables-report.md
 samples/06-cattura-tcpdump-report.md
 samples/07-suricata-report.md
+samples/08-zeek-report.md
 ```
 
-Il report della fase 7 documenta installazione, AF_PACKET, configurazione, regole, alert, systemd on demand, statistiche e rotazione log.
+Il report della fase 8 documenta installazione, cattura manuale, configurazione standalone, log JSON, ZeekControl, archiviazione e modalità operativa on demand.
 
 ## Report privati
 
@@ -140,12 +143,14 @@ Report privati recenti:
 ```text
 reports/06-cattura-tcpdump-private.md
 reports/07-suricata-private.md
+reports/08-zeek-private.md
 ```
 
 Verifica:
 
 ```bash
-git check-ignore -v reports/07-suricata-private.md
+git check-ignore -v reports/08-zeek-private.md
+git status --short
 ```
 
 I PCAP e i log integrali non vengono pubblicati.
@@ -160,16 +165,25 @@ scripts/security-gateway-firewall
 /etc/suricata/suricata.yaml
 /var/lib/suricata/rules/suricata.rules
 /var/lib/suricata/rules/local.rules
+/opt/zeek/etc/node.cfg
+/opt/zeek/etc/networks.cfg
+/opt/zeek/etc/zeekctl.cfg
+/opt/zeek/share/zeek/site/local.zeek
 ```
 
 Il servizio standard `nftables.service` non viene usato perché la configurazione predefinita contiene `flush ruleset`. Il progetto usa un servizio dedicato che gestisce soltanto le proprie tabelle.
 
-Suricata resta disabilitato al boot e viene avviato soltanto quando serve:
+Suricata e Zeek vengono usati su richiesta durante le sessioni di laboratorio:
 
 ```bash
 sudo systemctl start suricata
 sudo systemctl stop suricata
+
+sudo /opt/zeek/bin/zeekctl deploy
+sudo /opt/zeek/bin/zeekctl stop
 ```
+
+Durante i test iniziali i due analizzatori sono stati eseguiti separatamente per isolare risultati e consumo di risorse.
 
 ## Struttura del repository
 
@@ -198,7 +212,7 @@ sudo systemctl stop suricata
 
 ## Privacy
 
-Non pubblicare password Wi-Fi, SSID domestici, token, chiavi, MAC, nomi completi `wlx...`, hostname o percorsi personali, IP e porte completi non necessari, query DNS personali, PCAP grezzi, log integrali, file `eve.json` completi o traffico appartenente a terzi.
+Non pubblicare password Wi-Fi, SSID domestici, token, chiavi, MAC, nomi completi `wlx...`, hostname o percorsi personali, IP e porte completi non necessari, query DNS personali, PCAP grezzi, log integrali, file `eve.json` completi, log Zeek integrali, SNI TLS, certificati o traffico appartenente a terzi.
 
 ## Licenza
 
