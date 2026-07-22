@@ -1,0 +1,311 @@
+#!/usr/bin/env bash
+
+# Analizza automaticamente i log Zeek e Suricata del laboratorio.
+#
+# Il comando coordina i tre programmi Python della fase 9:
+# - read_zeek_json.py;
+# - read_suricata_json.py;
+# - correlate_logs.py.
+#
+# Per impostazione predefinita:
+# - cerca il conn.log Zeek più recente sotto /opt/zeek/logs;
+# - legge /var/log/suricata/eve.json;
+# - salva i report nella cartella privata reports/ del repository;
+# - elimina sempre le copie temporanee.
+
+set -Eeuo pipefail
+
+# I file temporanei e i report creati dal comando devono essere privati.
+umask 077
+
+SCRIPT_DIR="$(
+    cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+    pwd
+)"
+
+REPO_ROOT="$(
+    cd -- "$SCRIPT_DIR/.."
+    pwd
+)"
+
+DEFAULT_ZEEK_ROOT="/opt/zeek/logs"
+DEFAULT_SURICATA_LOG="/var/log/suricata/eve.json"
+
+ZEEK_LOG=""
+SURICATA_LOG="$DEFAULT_SURICATA_LOG"
+REPORT_DIR="$REPO_ROOT/reports"
+WINDOW_SECONDS="5"
+REPORT_PREFIX="lab-analysis-$(date '+%Y%m%d-%H%M%S')"
+KEEP_TEMP=0
+TEMP_DIR=""
+
+print_usage() {
+    cat <<'EOF'
+Uso:
+  bash analyze-lab [opzioni]
+
+Opzioni:
+  --zeek-log PERCORSO       Usa un conn.log Zeek specifico.
+  --suricata-log PERCORSO   Usa un eve.json Suricata specifico.
+  --report-dir PERCORSO     Directory dei report privati.
+  --prefix NOME             Prefisso dei file generati.
+  --window-seconds NUMERO   Finestra della correlazione. Default: 5.
+  --keep-temp               Conserva le copie temporanee per il debug.
+  -h, --help                Mostra questo aiuto.
+
+Esempio normale:
+  bash analyze-lab
+
+Esempio con campioni sintetici:
+  bash analyze-lab \
+    --zeek-log samples/zeek_conn_sample.jsonl \
+    --suricata-log samples/suricata_correlation_sample.jsonl \
+    --report-dir /tmp/lab-reports \
+    --window-seconds 2
+EOF
+}
+
+log() {
+    printf '[analyze-lab] %s\n' "$*"
+}
+
+die() {
+    printf '[analyze-lab] ERRORE: %s\n' "$*" >&2
+    exit 1
+}
+
+require_value() {
+    local option_name="$1"
+    local option_value="${2-}"
+
+    if [[ -z "$option_value" ]]; then
+        die "manca il valore per $option_name"
+    fi
+}
+
+cleanup() {
+    if [[ -z "$TEMP_DIR" || ! -d "$TEMP_DIR" ]]; then
+        return
+    fi
+
+    if (( KEEP_TEMP )); then
+        log "File temporanei conservati in: $TEMP_DIR"
+        return
+    fi
+
+    rm -rf -- "$TEMP_DIR"
+}
+
+trap cleanup EXIT
+
+while (( $# > 0 )); do
+    case "$1" in
+        --zeek-log)
+            require_value "$1" "${2-}"
+            ZEEK_LOG="$2"
+            shift 2
+            ;;
+
+        --suricata-log)
+            require_value "$1" "${2-}"
+            SURICATA_LOG="$2"
+            shift 2
+            ;;
+
+        --report-dir)
+            require_value "$1" "${2-}"
+            REPORT_DIR="$2"
+            shift 2
+            ;;
+
+        --prefix)
+            require_value "$1" "${2-}"
+            REPORT_PREFIX="$2"
+            shift 2
+            ;;
+
+        --window-seconds)
+            require_value "$1" "${2-}"
+            WINDOW_SECONDS="$2"
+            shift 2
+            ;;
+
+        --keep-temp)
+            KEEP_TEMP=1
+            shift
+            ;;
+
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+
+        *)
+            die "opzione sconosciuta: $1"
+            ;;
+    esac
+done
+
+if [[ ! "$WINDOW_SECONDS" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    die "--window-seconds deve essere un numero non negativo"
+fi
+
+for required_command in python3 mktemp find sort head cut date; do
+    command -v "$required_command" >/dev/null 2>&1 ||
+        die "comando non disponibile: $required_command"
+done
+
+for python_program in \
+    read_zeek_json.py \
+    read_suricata_json.py \
+    correlate_logs.py
+do
+    [[ -f "$SCRIPT_DIR/$python_program" ]] ||
+        die "programma mancante: $SCRIPT_DIR/$python_program"
+done
+
+run_privileged_reader() {
+    local source_path="$1"
+    local destination_path="$2"
+    local -a reader_command
+
+    if [[ "$source_path" == *.gz ]]; then
+        command -v gzip >/dev/null 2>&1 ||
+            die "gzip non è installato"
+
+        reader_command=(gzip -cd -- "$source_path")
+    else
+        reader_command=(cat -- "$source_path")
+    fi
+
+    if [[ -r "$source_path" ]]; then
+        "${reader_command[@]}" > "$destination_path"
+        return
+    fi
+
+    command -v sudo >/dev/null 2>&1 ||
+        die "il file non è leggibile e sudo non è disponibile: $source_path"
+
+    sudo "${reader_command[@]}" > "$destination_path"
+}
+
+find_latest_zeek_log() {
+    local result
+
+    [[ -d "$DEFAULT_ZEEK_ROOT" ]] ||
+        die "directory Zeek non trovata: $DEFAULT_ZEEK_ROOT"
+
+    if [[ -r "$DEFAULT_ZEEK_ROOT" ]]; then
+        result="$(
+            find -L "$DEFAULT_ZEEK_ROOT" \
+                -type f \
+                \( \
+                    -name 'conn.log' \
+                    -o -name 'conn.*.log' \
+                    -o -name 'conn.*.log.gz' \
+                \) \
+                ! -name 'conn-summary*' \
+                -printf '%T@ %p\n' \
+            | sort -nr \
+            | head -n 1 \
+            | cut -d' ' -f2-
+        )"
+    else
+        command -v sudo >/dev/null 2>&1 ||
+            die "la directory Zeek richiede sudo"
+
+        result="$(
+            sudo find -L "$DEFAULT_ZEEK_ROOT" \
+                -type f \
+                \( \
+                    -name 'conn.log' \
+                    -o -name 'conn.*.log' \
+                    -o -name 'conn.*.log.gz' \
+                \) \
+                ! -name 'conn-summary*' \
+                -printf '%T@ %p\n' \
+            | sort -nr \
+            | head -n 1 \
+            | cut -d' ' -f2-
+        )"
+    fi
+
+    [[ -n "$result" ]] ||
+        die "nessun conn.log Zeek trovato sotto $DEFAULT_ZEEK_ROOT"
+
+    printf '%s\n' "$result"
+}
+
+if [[ -z "$ZEEK_LOG" ]]; then
+    log "Ricerca del conn.log Zeek più recente..."
+    ZEEK_LOG="$(find_latest_zeek_log)"
+fi
+
+[[ -e "$ZEEK_LOG" ]] || die "log Zeek non trovato: $ZEEK_LOG"
+[[ -e "$SURICATA_LOG" ]] || die "log Suricata non trovato: $SURICATA_LOG"
+
+mkdir -p -- "$REPORT_DIR"
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/linux-security-lab.XXXXXX")"
+
+ZEEK_TEMP="$TEMP_DIR/zeek-conn.jsonl"
+SURICATA_TEMP="$TEMP_DIR/suricata-eve.jsonl"
+
+ZEEK_REPORT="$REPORT_DIR/${REPORT_PREFIX}-zeek.json"
+SURICATA_REPORT="$REPORT_DIR/${REPORT_PREFIX}-suricata.json"
+CORRELATION_REPORT="$REPORT_DIR/${REPORT_PREFIX}-correlation.json"
+
+log "Log Zeek: $ZEEK_LOG"
+log "Log Suricata: $SURICATA_LOG"
+log "Copia privata dei log nella directory temporanea..."
+
+run_privileged_reader "$ZEEK_LOG" "$ZEEK_TEMP"
+run_privileged_reader "$SURICATA_LOG" "$SURICATA_TEMP"
+
+log "Analisi Zeek..."
+python3 "$SCRIPT_DIR/read_zeek_json.py" \
+    "$ZEEK_TEMP" \
+    --json-output "$ZEEK_REPORT"
+
+log "Analisi Suricata..."
+python3 "$SCRIPT_DIR/read_suricata_json.py" \
+    "$SURICATA_TEMP" \
+    --json-output "$SURICATA_REPORT"
+
+log "Correlazione Zeek-Suricata..."
+python3 "$SCRIPT_DIR/correlate_logs.py" \
+    "$ZEEK_TEMP" \
+    "$SURICATA_TEMP" \
+    --window-seconds "$WINDOW_SECONDS" \
+    --json-output "$CORRELATION_REPORT"
+
+# Collegamenti locali comodi: puntano sempre ai report dell'ultima esecuzione.
+ln -sfn -- "$(basename -- "$ZEEK_REPORT")" \
+    "$REPORT_DIR/zeek-latest.json"
+ln -sfn -- "$(basename -- "$SURICATA_REPORT")" \
+    "$REPORT_DIR/suricata-latest.json"
+ln -sfn -- "$(basename -- "$CORRELATION_REPORT")" \
+    "$REPORT_DIR/correlation-latest.json"
+
+MATCHED_EVENTS="$(
+    python3 - "$CORRELATION_REPORT" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+
+report_path = Path(sys.argv[1])
+report = json.loads(report_path.read_text(encoding="utf-8"))
+print(report["suricata"]["matched_events"])
+PYTHON
+)"
+
+printf '\n'
+log "Analisi completata."
+log "Report Zeek: $ZEEK_REPORT"
+log "Report Suricata: $SURICATA_REPORT"
+log "Report correlazione: $CORRELATION_REPORT"
+
+if [[ "$MATCHED_EVENTS" == "0" ]]; then
+    log "Nota: nessun evento correlato. I due log potrebbero non coprire lo stesso intervallo temporale."
+else
+    log "Eventi Suricata correlati: $MATCHED_EVENTS"
+fi
