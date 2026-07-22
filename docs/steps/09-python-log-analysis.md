@@ -18,7 +18,10 @@ La soluzione usa soltanto la libreria standard Python e legge i file una riga al
 python/read_zeek_json.py
 python/read_suricata_json.py
 python/correlate_logs.py
+python/analyze-lab
 ```
+
+I primi tre file svolgono l'analisi. `analyze-lab` è un coordinatore Bash: trova i log, prepara copie temporanee private, richiama i programmi Python, salva i report e pulisce i dati temporanei.
 
 Campioni e test:
 
@@ -38,7 +41,56 @@ python/tests/test_phase9.py
 - `dataclasses` per risultati leggibili;
 - `argparse` per le interfacce da terminale;
 - `unittest` per i test automatici;
+- Bash con `set -Eeuo pipefail` per il coordinatore;
 - nessuna libreria esterna.
+
+## Uso quotidiano con un solo comando
+
+Dalla directory `python/`, la prima volta:
+
+```bash
+chmod +x analyze-lab
+```
+
+Successivamente:
+
+```bash
+./analyze-lab
+```
+
+È sempre possibile eseguirlo anche così:
+
+```bash
+bash analyze-lab
+```
+
+Il comando predefinito:
+
+1. seleziona il `conn.log` Zeek più recente;
+2. legge il file EVE corrente di Suricata;
+3. copia i dati in una directory temporanea con `umask 077`;
+4. esegue i tre programmi Python come utente normale;
+5. usa `sudo` soltanto per leggere file protetti;
+6. salva i report in `reports/`, esclusa da Git;
+7. aggiorna i collegamenti `zeek-latest.json`, `suricata-latest.json` e `correlation-latest.json`;
+8. elimina sempre la directory temporanea tramite `trap`.
+
+Opzioni disponibili:
+
+```bash
+./analyze-lab --help
+```
+
+Esempio con log scelti manualmente:
+
+```bash
+./analyze-lab \
+    --zeek-log /percorso/conn.log.gz \
+    --suricata-log /percorso/eve.json \
+    --window-seconds 5
+```
+
+Un risultato di correlazione pari a zero non rende inutili le due analisi separate. Significa normalmente che Zeek e Suricata non hanno osservato lo stesso intervallo temporale.
 
 ## Analisi Zeek
 
@@ -148,6 +200,8 @@ Tutti i programmi possono produrre report JSON. I report non includono:
 - URI HTTP;
 - contenuti dei pacchetti.
 
+`analyze-lab` salva i report datati nella directory privata `reports/` e crea tre collegamenti simbolici ai risultati più recenti.
+
 ## Test
 
 Comando:
@@ -173,7 +227,11 @@ python3 -m compileall -q \
     read_suricata_json.py \
     correlate_logs.py \
     tests
+
+bash -n analyze-lab
 ```
+
+Il coordinatore è stato inoltre provato con analizzatori simulati, verificando creazione dei tre report, collegamenti `latest`, lettura delle opzioni e pulizia automatica.
 
 ## Test di completamento
 
@@ -184,6 +242,8 @@ python3 -m compileall -q \
 - [x] errori gestiti;
 - [x] report JSON e testuale prodotti;
 - [x] correlazione reale verificata;
+- [x] comando unico di coordinamento disponibile;
+- [x] copie temporanee private e pulizia automatica;
 - [x] codice commentato e spiegato;
 - [x] test automatici essenziali superati.
 
