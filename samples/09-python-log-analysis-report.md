@@ -18,6 +18,7 @@ Il codice usa esclusivamente la libreria standard Python e legge i file una riga
 python/read_zeek_json.py
 python/read_suricata_json.py
 python/correlate_logs.py
+python/analyze-lab
 python/tests/test_phase9.py
 python/samples/*.jsonl
 ```
@@ -30,7 +31,31 @@ Funzionalità:
 - statistiche Suricata su eventi, flow, alert, anomalie e intervalli orari;
 - esportazione JSON senza indirizzi IP grezzi o UID Zeek;
 - correlazione bidirezionale tramite protocollo, endpoint e timestamp;
+- comando Bash unico per trovare i log e coordinare le analisi;
+- copie temporanee private e pulizia automatica;
 - test automatici con `unittest`.
+
+## Comando unico
+
+Per l'uso quotidiano è disponibile:
+
+```bash
+cd python
+chmod +x analyze-lab
+./analyze-lab
+```
+
+Il coordinatore individua il `conn.log` Zeek più recente, legge il file EVE corrente di Suricata, richiama i tre programmi Python e salva i risultati nella directory privata `reports/`.
+
+I collegamenti seguenti puntano sempre ai report più recenti:
+
+```text
+reports/zeek-latest.json
+reports/suricata-latest.json
+reports/correlation-latest.json
+```
+
+Il comando usa `sudo` soltanto per la lettura dei log protetti. Python viene eseguito come utente normale. Le copie temporanee sono create con permessi limitati e rimosse tramite `trap` anche in caso di errore.
 
 ## Analisi Zeek verificata
 
@@ -123,6 +148,8 @@ La correlazione indica compatibilità di 5-tupla e vicinanza temporale; non è d
 
 I report pubblici e gli output JSON non contengono indirizzi IP grezzi, UID Zeek, query o domini DNS, SNI TLS, URI HTTP, contenuti dei pacchetti o log integrali. I campioni pubblicati sono sintetici e usano indirizzi riservati alla documentazione.
 
+Il comando unico conserva i report nella directory privata ignorata da Git e cancella automaticamente le copie temporanee dei log.
+
 ## Test
 
 ```text
@@ -133,6 +160,8 @@ OK
 
 Sono verificati lettura normale e gzip, righe malformate, statistiche note, esportazione JSON, privacy, timestamp, confronto bidirezionale e correlazione positiva e negativa.
 
+Il coordinatore Bash ha superato il controllo `bash -n` ed è stato provato con analizzatori simulati, verificando report, collegamenti `latest`, opzioni e pulizia.
+
 ## Valutazione finale
 
-Zeek fornisce una vista compatta delle connessioni; Suricata produce eventi più granulari su protocolli, flussi e alert. Python permette di unire le due viste senza modificare rete, firewall o sensori. Il codice è commentato, testato e pronto per la fase database e dashboard Docker.
+Zeek fornisce una vista compatta delle connessioni; Suricata produce eventi più granulari su protocolli, flussi e alert. Python permette di unire le due viste senza modificare rete, firewall o sensori. `analyze-lab` riduce l'uso quotidiano a un solo comando, mantenendo separati e leggibili i programmi didattici.
